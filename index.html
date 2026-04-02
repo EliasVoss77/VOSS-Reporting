@@ -167,6 +167,12 @@ totalHours += parseInt(hoursMatch[1]);
 let valueMatch = text.match(/Economic Value:\s*\$?([\d,]+)/i) || 
                  text.match(/Projected Economic Value:\s*\$?([\d,]+)/i);
 
+let businessMatch = text.match(/Projected Business or Organizational Value:\s*\$?([\d,]+)/i);
+
+if(businessMatch){
+totalBusinessValue += parseInt(businessMatch[1].replace(/,/g,""));
+}
+  
 if(valueMatch){
 totalValue += parseInt(valueMatch[1].replace(/,/g,""));
 }
@@ -178,6 +184,20 @@ if(aiMatch){
 totalAI += parseInt(aiMatch[1]);
 aiCount++;
 }
+
+let humanMatch = text.match(/Human Contribution:\s*(\d+)/i);
+
+if(humanMatch){
+totalHuman += parseInt(humanMatch[1]);
+humanCount++;
+}
+  
+let timeframeMatch = text.match(/\((.*?)\)/);
+
+if(timeframeMatch){
+timeframeList.push(timeframeMatch[1]);
+}
+  
 
 // CATEGORY
 let catMatch = text.match(/Task Category:\s*([A-Za-z]+)/i);
