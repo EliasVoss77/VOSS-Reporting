@@ -133,54 +133,59 @@ ${r.text}
 
 }
 
-function generateSummary(){
+function generateVossReport(){
 
 let reports = JSON.parse(localStorage.getItem("vossReports")) || [];
 
 let totalHours = 0;
 let totalValue = 0;
-let totalAIContribution = 0;
+let totalAI = 0;
+let aiCount = 0;
 
 let categories = {};
-let combinedText = "";
 
 reports.forEach(function(r){
 
 let text = r.issue;
 
-combinedText += text + " ";
-
+// HOURS SAVED
 let hoursMatch = text.match(/Hours Saved:\s*(\d+)/i);
 if(hoursMatch){
 totalHours += parseInt(hoursMatch[1]);
 }
 
-let valueMatch = text.match(/Economic Value:\s*\$?(\d+)/i);
+// ECONOMIC VALUE
+let valueMatch = text.match(/Economic Value:\s*\$?([\d,]+)/i) || 
+                 text.match(/Projected Economic Value:\s*\$?([\d,]+)/i);
+
 if(valueMatch){
-totalValue += parseInt(valueMatch[1]);
+totalValue += parseInt(valueMatch[1].replace(/,/g,""));
 }
 
+// AI CONTRIBUTION
 let aiMatch = text.match(/AI Contribution:\s*(\d+)/i);
+
 if(aiMatch){
-totalAIContribution += parseInt(aiMatch[1]);
+totalAI += parseInt(aiMatch[1]);
+aiCount++;
 }
 
-let categoryMatch = text.match(/Task Category:\s*([A-Za-z]+)/i);
-if(categoryMatch){
+// CATEGORY
+let catMatch = text.match(/Task Category:\s*([A-Za-z]+)/i);
 
-let cat = categoryMatch[1];
+if(catMatch){
+let cat = catMatch[1];
 
 if(!categories[cat]){
 categories[cat] = 0;
 }
 
 categories[cat]++;
-
 }
 
 });
 
-let avgAI = reports.length ? (totalAIContribution / reports.length).toFixed(1) : 0;
+let avgAI = aiCount > 0 ? (totalAI / aiCount).toFixed(1) : 0;
 
 let categoryHTML = "";
 
@@ -203,10 +208,7 @@ $${totalValue.toLocaleString()}<br><br>
 ${avgAI}%<br><br>
 
 <b>Task Category Distribution:</b><br>
-${categoryHTML}<br>
-
-<b>Compiled Insight Dataset:</b><br>
-${combinedText.substring(0,700)}...
+${categoryHTML}
 `;
 
 document.getElementById("summary").innerHTML = summary;
