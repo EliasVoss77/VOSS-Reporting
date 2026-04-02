@@ -7,7 +7,7 @@
 <style>
 
 body{
-font-family: Arial;
+font-family: Arial, sans-serif;
 background:#111;
 color:white;
 text-align:center;
@@ -15,10 +15,10 @@ padding:40px;
 }
 
 input, textarea{
-width:300px;
+width:320px;
 padding:10px;
 margin:10px;
-border-radius:5px;
+border-radius:6px;
 border:none;
 }
 
@@ -30,6 +30,7 @@ color:white;
 font-size:16px;
 border-radius:6px;
 cursor:pointer;
+margin:5px;
 }
 
 button:hover{
@@ -39,21 +40,33 @@ background:#27ae60;
 .report{
 background:#222;
 padding:15px;
-margin:15px;
+margin:15px auto;
 border-radius:8px;
+max-width:700px;
+text-align:left;
+}
+
+#summary{
+background:#181818;
+padding:20px;
+margin-top:30px;
+border-radius:10px;
+max-width:800px;
+margin-left:auto;
+margin-right:auto;
+text-align:left;
 }
 
 </style>
 
 </head>
 
-
 <body>
 
 <h1>VOSS Reporting</h1>
 <p>Virtual Operating System Synopsis Reporting</p>
 
-<h2>Submit Initial Report</h2>
+<h2>Submit Report</h2>
 
 <form id="reportForm">
 
@@ -61,24 +74,27 @@ border-radius:8px;
 
 <input type="text" id="department" placeholder="Department - Position"><br>
 
-<textarea id="issue" placeholder="Paste Initial Document" rows="5" required></textarea><br>
+<textarea id="issue" placeholder="Paste AI Report Here" rows="6" required></textarea><br>
 
 <button type="submit">Submit Report</button>
-<br><br>
-
-<button type="button" onclick="viewReports()">View Reports</button>
-
-<button type="button" onclick="generateSummary()">VOSS Summary</button>
 
 </form>
 
-<p id="status"></p>
+<br>
 
-<div id="reportViewer"></div>
+<button onclick="generateSummary()">Generate VOSS Intelligence Report</button>
 
-<div id="reportOutput"></div>
+<button onclick="clearReports()">Clear Session</button>
+
+<h2>Submitted Reports</h2>
+
+<div id="reports"></div>
+
+<div id="summary"></div>
 
 <script>
+
+let reports = [];
 
 document.getElementById("reportForm").addEventListener("submit", function(e){
 
@@ -87,115 +103,87 @@ e.preventDefault();
 let report = {
 name: document.getElementById("name").value,
 department: document.getElementById("department").value,
-issue: document.getElementById("issue").value,
-time: new Date().toISOString()
+text: document.getElementById("issue").value
 };
-
-let reports = JSON.parse(localStorage.getItem("vossReports")) || [];
 
 reports.push(report);
 
-localStorage.setItem("vossReports", JSON.stringify(reports));
-
-document.getElementById("status").innerText =
-"Report submitted successfully.";
+displayReports();
 
 document.getElementById("reportForm").reset();
 
 });
 
+function displayReports(){
 
-function viewReports(){
+let container = document.getElementById("reports");
 
-let reports = JSON.parse(localStorage.getItem("vossReports")) || [];
+container.innerHTML = "";
 
-let output = "<h2>Submitted Reports</h2>";
+reports.forEach(r => {
 
-reports.forEach(function(r){
-
-output += `
+container.innerHTML += `
 <div class="report">
-<b>Name:</b> ${r.name}<br>
-<b>Department:</b> ${r.department}<br>
-<b>Report:</b><br>${r.issue}<br><br>
-<small>${r.time}</small>
+<b>${r.name}</b> — ${r.department}<br><br>
+${r.text}
 </div>
 `;
 
 });
 
-document.getElementById("reportViewer").innerHTML = output;
-
 }
-
 
 function generateSummary(){
 
-let reports = JSON.parse(localStorage.getItem("vossReports")) || [];
+if(reports.length === 0){
+
+document.getElementById("summary").innerHTML =
+"<h2>VOSS Intelligence Report</h2>No reports submitted.";
+
+return;
+
+}
+
+let combined = reports.map(r => r.text).join(" ");
+
+let hoursSaved = reports.length * 20;
+
+let valueLow = reports.length * 5000;
+
+let valueHigh = reports.length * 10000;
 
 let summary = `
-<h2>VOSS System Summary</h2>
-Total Reports: ${reports.length}<br><br>
+<h2>VOSS Intelligence Report</h2>
+
+<b>Reports analyzed:</b> ${reports.length}<br><br>
+
+<b>Compiled Insight Dataset:</b><br>
+${combined.substring(0,900)}...
+<br><br>
+
+<b>Estimated Effort Saved:</b><br>
+~${hoursSaved} hours
+<br><br>
+
+<b>Projected Economic Value:</b><br>
+$${valueLow.toLocaleString()} – $${valueHigh.toLocaleString()}
+<br><br>
+
+<b>Recommended Next Step:</b><br>
+Expand dataset and compare outputs across multiple AI systems.
 `;
 
-let departments = {};
-
-reports.forEach(function(r){
-
-if(!departments[r.department]){
-departments[r.department] = 0;
-}
-
-departments[r.department]++;
-
-});
-
-summary += "<b>Reports by Department:</b><br>";
-
-for(let d in departments){
-summary += d + ": " + departments[d] + "<br>";
-}
-
-document.getElementById("reportViewer").innerHTML = summary;
+document.getElementById("summary").innerHTML = summary;
 
 }
 
+function clearReports(){
 
-function generateVossSummary(){
+reports = [];
 
-let reports = document.querySelectorAll(".report");
+document.getElementById("reports").innerHTML = "";
 
-let combinedText = "";
-
-reports.forEach(report => {
-combinedText += report.innerText + " ";
-});
-
-let reportCount = reports.length;
-
-let summary = `
-VOSS Intelligence Summary
-
-Reports analyzed: ${reportCount}
-
-Key Themes Identified:
-• AI productivity measurement
-• Policy framework development
-• Economic impact modeling
-
-Estimated Effort Saved:
-20–30 hours per report
-
-Projected Economic Value:
-$5,000 – $10,000 per report
-
-Next Steps:
-• Expand dataset
-• Compare multiple AI system outputs
-• Generate cross-model intelligence
-`;
-
-document.getElementById("reportOutput").innerText = summary;
+document.getElementById("summary").innerHTML = "";
 
 }
 
