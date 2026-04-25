@@ -1179,8 +1179,7 @@
           <div class="summary-grid">
             <div class="stat-box"><div class="stat-label">Hours Saved</div><div class="stat-value" id="out-hours">—</div></div>
             <div class="stat-box"><div class="stat-label">Chat Value</div><div class="stat-value blue" id="out-cost">—</div></div>
-            <div class="stat-box"><div class="stat-label">Implementation Cost</div><div class="stat-value" id="out-impl-cost">—</div></div>
-            <div class="stat-box"><div class="stat-label">Projected Business Value</div><div class="stat-value blue" id="out-projected">—</div></div>
+            <div class="stat-box"><div class="stat-label">Projected Business Value</div><div class="stat-value" id="out-projected">—</div></div>
             <div class="stat-box"><div class="stat-label">Category</div><div class="stat-value blue" style="font-size:0.85rem;" id="out-category">—</div></div>
           </div>
           <div class="contrib-row">
@@ -1190,52 +1189,62 @@
           <div class="analysis-source" id="out-source"></div>
         </div>
 
-        <!-- Section 1B: Value Calculator -->
+        <!-- Section 1B: Implementation Cost Calculator (collapsible) -->
         <div id="section-calculator" class="card" style="display:none;">
-          <div class="card-title">Section 1B — Implementation Cost Calculator <span class="info-icon" onclick="showFormulaModal()">i</span></div>
-
-          <div class="calc-section-label">// Default Role (applies to all tasks)</div>
-          <div class="role-toggles">
-            <button class="role-btn" onclick="setRole(this, 35)">Junior ($35/hr)</button>
-            <button class="role-btn active" onclick="setRole(this, 65)">Mid ($65/hr)</button>
-            <button class="role-btn" onclick="setRole(this, 95)">Senior ($95/hr)</button>
-            <button class="role-btn" onclick="setRole(this, 150)">Executive ($150/hr)</button>
+          <div class="card-title" style="cursor:pointer;" onclick="toggleCalc()">
+            Section 1B — Implementation Cost Calculator
+            <span id="calc-arrow" style="margin-left:auto;font-size:0.7rem;transition:transform 0.3s;">▼</span>
           </div>
 
-          <div class="calc-row">
-            <div class="calc-field">
-              <label>Default Hourly Rate ($)</label>
-              <input type="number" id="calc-rate" value="65" min="15" max="500" oninput="recalculate()">
+          <div id="calc-body">
+            <div class="calc-section-label">// Pay Rate — drag to set hourly rate</div>
+            <div class="calc-field" style="margin-bottom:8px;">
+              <label>Hourly Rate — <span id="rate-label">$65/hr (Mid-level)</span></label>
+              <input type="range" id="calc-rate-slider" min="10" max="200" step="1" value="65"
+                oninput="updateRateLabel(); recalculate()">
+              <div class="calc-range-row">
+                <span>$10 Min Wage</span>
+                <span>$65 Mid</span>
+                <span>$200 Executive</span>
+              </div>
             </div>
-            <div class="calc-field">
-              <label>Default Headcount</label>
-              <input type="number" id="calc-headcount" value="1" min="1" max="50" oninput="recalculate()">
-            </div>
-          </div>
 
-          <div class="calc-field" style="margin-bottom:16px;">
-            <label>Industry Multiplier — <span id="mult-label">General (1.0x)</span></label>
-            <input type="range" id="calc-multiplier" min="0.5" max="2.0" step="0.1" value="1.0" oninput="updateMultiplierLabel(); recalculate()">
-            <div class="calc-range-row">
-              <span>0.5x Low</span>
-              <span>1.0x General</span>
-              <span>2.0x High</span>
+            <div class="calc-row">
+              <div class="calc-field">
+                <label>Custom Rate ($) — override slider</label>
+                <input type="number" id="calc-rate" value="65" min="10" max="500" oninput="syncRateFromInput(); recalculate()">
+              </div>
+              <div class="calc-field">
+                <label>Default Headcount</label>
+                <input type="number" id="calc-headcount" value="1" min="1" max="50" oninput="recalculate()">
+              </div>
             </div>
-          </div>
 
-          <div class="calc-result">
-            <div>
-              <div class="calc-result-label">Estimated Implementation Cost</div>
-              <div class="calc-result-value" id="calc-output">$0</div>
+            <div class="calc-field" style="margin-bottom:16px;">
+              <label>Industry Multiplier — <span id="mult-label">General (1.0x)</span></label>
+              <input type="range" id="calc-multiplier" min="0.5" max="2.0" step="0.1" value="1.0"
+                oninput="updateMultiplierLabel(); recalculate()">
+              <div class="calc-range-row">
+                <span>0.5x Low</span>
+                <span>1.0x General</span>
+                <span>2.0x High</span>
+              </div>
             </div>
-            <div class="calc-formula" id="calc-formula-display">
-              Σ tasks × role rate × headcount × multiplier
-            </div>
-          </div>
 
-          <div class="calc-pro-teaser">
-            <div class="calc-pro-text">🔒 Pro — Save role presets, time horizon modeling, team cost templates</div>
-            <button class="calc-pro-btn" onclick="alert('Pro plan coming soon!')">Upgrade to Pro</button>
+            <div class="calc-result">
+              <div>
+                <div class="calc-result-label">Estimated Implementation Cost</div>
+                <div class="calc-result-value" id="calc-output">$0</div>
+              </div>
+              <div class="calc-formula" id="calc-formula-display">
+                Σ tasks × rate × headcount × multiplier
+              </div>
+            </div>
+
+            <div class="calc-pro-teaser">
+              <div class="calc-pro-text">🔒 Pro — Save rate presets, team templates, time horizon modeling</div>
+              <button class="calc-pro-btn" onclick="alert('Pro plan coming soon!')">Upgrade to Pro</button>
+            </div>
           </div>
         </div>
 
@@ -1321,15 +1330,37 @@
   let calcRate = 65;
   let calcAiPct = 1.0;
   let rawActionItems = [];
+  let calcOpen = true;
 
   const roleRates = { Junior: 35, Mid: 65, Senior: 95, Executive: 150 };
 
-  function setRole(btn, rate) {
-    document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('calc-rate').value = rate;
-    calcRate = rate;
-    recalculate();
+  function toggleCalc() {
+    calcOpen = !calcOpen;
+    document.getElementById('calc-body').style.display = calcOpen ? 'block' : 'none';
+    document.getElementById('calc-arrow').style.transform = calcOpen ? 'rotate(0deg)' : 'rotate(-90deg)';
+  }
+
+  function updateRateLabel() {
+    const val = parseInt(document.getElementById('calc-rate-slider').value);
+    let label = `$${val}/hr`;
+    if (val <= 15) label = `$${val}/hr (Minimum Wage)`;
+    else if (val <= 20) label = `$${val}/hr (Entry Level)`;
+    else if (val <= 30) label = `$${val}/hr (Service Worker)`;
+    else if (val <= 50) label = `$${val}/hr (Skilled Trade)`;
+    else if (val <= 75) label = `$${val}/hr (Mid-Level Professional)`;
+    else if (val <= 100) label = `$${val}/hr (Senior Professional)`;
+    else if (val <= 150) label = `$${val}/hr (Manager / Specialist)`;
+    else label = `$${val}/hr (Executive / Director)`;
+    document.getElementById('rate-label').textContent = label;
+    document.getElementById('calc-rate').value = val;
+    calcRate = val;
+  }
+
+  function syncRateFromInput() {
+    const val = parseInt(document.getElementById('calc-rate').value) || 65;
+    document.getElementById('calc-rate-slider').value = Math.min(val, 200);
+    calcRate = val;
+    updateRateLabel();
   }
 
   function updateMultiplierLabel() {
@@ -1345,41 +1376,43 @@
   }
 
   function getTaskRate(index) {
-    const el = document.getElementById('task-rate-' + index);
-    if (el && el.value) return parseFloat(el.value) || calcRate;
+    const el = document.getElementById('task-role-' + index);
+    if (el) return parseFloat(el.value) || calcRate;
     return calcRate;
   }
 
   function getTaskHeadcount(index) {
     const el = document.getElementById('task-headcount-' + index);
-    if (el && el.value) return parseFloat(el.value) || 1;
+    if (el) return parseFloat(el.value) || 1;
     return parseFloat(document.getElementById('calc-headcount')?.value) || 1;
+  }
+
+  function getTaskHours(index) {
+    const el = document.getElementById('task-hours-' + index);
+    if (el) return parseFloat(el.value) || 0;
+    return rawActionItems[index]?.hoursToComplete || 0;
   }
 
   function recalculate() {
     const multiplier = parseFloat(document.getElementById('calc-multiplier').value) || 1.0;
-    const defaultHeadcount = parseFloat(document.getElementById('calc-headcount')?.value) || 1;
-
-    let projectedTotal = 0;
+    const rate = parseFloat(document.getElementById('calc-rate').value) || 65;
+    const headcount = parseFloat(document.getElementById('calc-headcount')?.value) || 1;
+    let total = 0;
 
     if (rawActionItems.length > 0) {
       rawActionItems.forEach((a, i) => {
-        const rate = getTaskRate(i);
-        const headcount = getTaskHeadcount(i);
-        const hours = a.hoursToComplete || 0;
-        projectedTotal += hours * rate * headcount;
+        const r = getTaskRate(i);
+        const h = getTaskHeadcount(i);
+        const hrs = getTaskHours(i);
+        total += hrs * r * h;
       });
-      projectedTotal = projectedTotal * multiplier;
+      total = total * multiplier;
     }
 
-    projectedTotal = Math.round(projectedTotal / 50) * 50;
-
-    document.getElementById('calc-output').textContent = '$' + projectedTotal.toLocaleString();
+    total = Math.round(total / 50) * 50;
+    document.getElementById('calc-output').textContent = '$' + total.toLocaleString();
     document.getElementById('calc-formula-display').textContent =
-      `Σ tasks × role rate × headcount × ${multiplier}x multiplier`;
-
-    // Update Section 1 implementation cost (not projected business value)
-    document.getElementById('out-impl-cost').textContent = '$' + projectedTotal.toLocaleString();
+      `Σ tasks × $${rate}/hr × ${headcount} person(s) × ${multiplier}x`;
   }
 
   function applyMultiplierToSection3() {
@@ -1388,7 +1421,7 @@
     rawActionItems.forEach((a, i) => {
       const rate = getTaskRate(i);
       const headcount = getTaskHeadcount(i);
-      const hours = a.hoursToComplete || 0;
+      const hours = getTaskHours(i);
       const adjusted = Math.round((hours * rate * headcount * multiplier) / 50) * 50;
       const valEl = document.getElementById('action-value-' + i);
       if (valEl) valEl.textContent = '$' + adjusted.toLocaleString();
@@ -1410,11 +1443,9 @@
       if (e.target === this) closeFormulaModal();
     });
     const slider = document.getElementById('calc-multiplier');
-    if (slider) {
-      slider.addEventListener('change', () => {
-        applyMultiplierToSection3();
-      });
-    }
+    if (slider) slider.addEventListener('change', () => applyMultiplierToSection3());
+    const rateSlider = document.getElementById('calc-rate-slider');
+    if (rateSlider) rateSlider.addEventListener('change', () => applyMultiplierToSection3());
   });
 
 
@@ -1655,7 +1686,6 @@
       document.getElementById('out-hours').textContent = summary.hoursSaved ?? '—';
       document.getElementById('out-cost').textContent = summary.chatValue ?? '—';
       document.getElementById('out-projected').textContent = summary.projectedBusinessValue ?? '—';
-      document.getElementById('out-impl-cost').textContent = '—'; // populated by calculator
       document.getElementById('out-category').textContent = summary.category ?? '—';
       document.getElementById('out-ai').textContent = summary.aiContribution ?? '—';
       document.getElementById('out-human').textContent = summary.humanContribution ?? '—';
@@ -1728,7 +1758,7 @@
           </div>
           <div class="action-metrics-block">
             <div class="action-metrics-row">
-              <div class="action-hours">${a.hoursToComplete || 0}h to complete</div>
+              <div class="action-hours">Impl. Cost:</div>
               <div class="action-value" id="action-value-${i}">$${taskValue.toLocaleString()}</div>
             </div>
             <div class="status-toggle">
