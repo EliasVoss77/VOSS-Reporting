@@ -726,7 +726,271 @@
 
   .empty-state { text-align: center; padding: 30px; color: var(--muted); font-family: 'Share Tech Mono', monospace; font-size: 0.8rem; letter-spacing: 0.1em; }
 
-  @media print {
+  /* ─── VALUE CALCULATOR ─── */
+
+  .calc-section-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.25em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    margin-top: 16px;
+  }
+
+  .calc-section-label:first-child { margin-top: 0; }
+
+  .role-toggles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .role-btn {
+    padding: 6px 12px;
+    border-radius: 2px;
+    font-size: 0.72rem;
+    font-family: 'Share Tech Mono', monospace;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+
+  .role-btn:hover { border-color: var(--muted); color: var(--text); }
+  .role-btn.active { background: rgba(0,255,136,0.1); color: var(--accent); border-color: var(--accent); }
+
+  .calc-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  @media (max-width: 520px) { .calc-row { grid-template-columns: 1fr; } }
+
+  .calc-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .calc-field label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .calc-field input[type="number"] {
+    padding: 10px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+
+  .calc-field input[type="number"]:focus { border-color: var(--accent); }
+
+  .calc-field input[type="range"] {
+    width: 100%;
+    accent-color: var(--accent);
+    height: 4px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .calc-range-row {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .calc-result {
+    background: var(--surface);
+    border: 1px solid rgba(0,255,136,0.2);
+    border-radius: 3px;
+    padding: 16px;
+    margin-top: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .calc-result-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .calc-result-value {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(0,255,136,0.3);
+  }
+
+  .calc-formula {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .calc-pro-teaser {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: rgba(0,200,255,0.05);
+    border: 1px solid rgba(0,200,255,0.15);
+    border-radius: 3px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .calc-pro-text {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--accent2);
+    letter-spacing: 0.05em;
+  }
+
+  .calc-pro-btn {
+    padding: 6px 14px;
+    background: transparent;
+    border: 1px solid var(--accent2);
+    color: var(--accent2);
+    border-radius: 2px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .calc-pro-btn:hover { background: rgba(0,200,255,0.1); }
+
+  .info-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 1px solid var(--muted);
+    color: var(--muted);
+    font-size: 0.6rem;
+    cursor: pointer;
+    margin-left: 6px;
+    font-family: serif;
+    font-style: italic;
+    transition: all 0.2s;
+  }
+
+  .info-icon:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Formula Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 500;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 32px;
+    max-width: 480px;
+    width: 90%;
+    position: relative;
+    animation: fadeUp 0.3s ease both;
+  }
+
+  .modal::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+  }
+
+  .modal-title {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.8rem;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  .modal-body {
+    font-size: 0.88rem;
+    line-height: 1.8;
+    color: var(--muted);
+  }
+
+  .modal-body strong { color: var(--text); }
+
+  .modal-formula {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 14px;
+    margin: 16px 0;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent);
+    line-height: 1.8;
+  }
+
+  .modal-close {
+    margin-top: 20px;
+    padding: 10px 20px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 3px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+    cursor: pointer;
+    letter-spacing: 0.1em;
+    transition: all 0.2s;
+  }
+
+  .modal-close:hover { border-color: var(--accent); color: var(--accent); }
     .sidebar, .btn-row, #status-bar, #export-row, .card:first-of-type, #reports, .sidebar-toggle { display: none !important; }
     .main-content { margin-left: 0 !important; }
     body { background: white !important; color: black !important; }
@@ -857,7 +1121,7 @@
           <div class="card-title">Section 1 — Time & Value Summary</div>
           <div class="summary-grid">
             <div class="stat-box"><div class="stat-label">Hours Saved</div><div class="stat-value" id="out-hours">—</div></div>
-            <div class="stat-box"><div class="stat-label">Cost Basis</div><div class="stat-value blue" id="out-cost">—</div></div>
+            <div class="stat-box"><div class="stat-label">Chat Value</div><div class="stat-value blue" id="out-cost">—</div></div>
             <div class="stat-box"><div class="stat-label">Projected Value</div><div class="stat-value" id="out-projected">—</div></div>
             <div class="stat-box"><div class="stat-label">Category</div><div class="stat-value blue" style="font-size:0.95rem;" id="out-category">—</div></div>
           </div>
@@ -866,6 +1130,78 @@
             <div class="contrib-box"><div class="stat-label">Human Contribution</div><div class="stat-value blue" id="out-human">—</div></div>
           </div>
           <div class="analysis-source" id="out-source"></div>
+        </div>
+
+        <!-- Section 1B: Value Calculator -->
+        <div id="section-calculator" class="card" style="display:none;">
+          <div class="card-title">Section 1B — Value Calculator <span class="info-icon" onclick="showFormulaModal()">i</span></div>
+
+          <div class="calc-section-label">// Select Your Role</div>
+          <div class="role-toggles">
+            <button class="role-btn active" onclick="setRole(this, 65)">Individual</button>
+            <button class="role-btn" onclick="setRole(this, 95)">Manager</button>
+            <button class="role-btn" onclick="setRole(this, 150)">Executive</button>
+            <button class="role-btn" onclick="setRole(this, 85)">Policy / Gov</button>
+            <button class="role-btn" onclick="setRole(this, 125)">Tech / Dev</button>
+            <button class="role-btn" onclick="setRole(this, 110)">Finance</button>
+          </div>
+
+          <div class="calc-row">
+            <div class="calc-field">
+              <label>Hourly Rate ($)</label>
+              <input type="number" id="calc-rate" value="65" min="15" max="500" oninput="recalculate()">
+            </div>
+            <div class="calc-field">
+              <label>Hours Saved</label>
+              <input type="number" id="calc-hours" value="0" min="0" max="1000" oninput="recalculate()">
+            </div>
+          </div>
+
+          <div class="calc-field" style="margin-bottom:16px;">
+            <label>Industry Multiplier — <span id="mult-label">General (1.0x)</span></label>
+            <input type="range" id="calc-multiplier" min="0.5" max="2.0" step="0.1" value="1.0" oninput="updateMultiplierLabel(); recalculate()">
+            <div class="calc-range-row">
+              <span>0.5x Low</span>
+              <span>1.0x General</span>
+              <span>2.0x High</span>
+            </div>
+          </div>
+
+          <div class="calc-result">
+            <div>
+              <div class="calc-result-label">Adjusted Projected Value</div>
+              <div class="calc-result-value" id="calc-output">$0</div>
+            </div>
+            <div class="calc-formula" id="calc-formula-display">
+              $65/hr × 0h × 100% AI × 1.0x
+            </div>
+          </div>
+
+          <div class="calc-pro-teaser">
+            <div class="calc-pro-text">🔒 Pro — Save rate presets, time horizon modeling, department benchmarks</div>
+            <button class="calc-pro-btn" onclick="alert('Pro plan coming soon!')">Upgrade to Pro</button>
+          </div>
+        </div>
+
+        <!-- Formula Modal -->
+        <div class="modal-overlay" id="formula-modal">
+          <div class="modal">
+            <div class="modal-title">// How We Calculate</div>
+            <div class="modal-body">
+              <p>VOSS projects value based on a transparent formula you can adjust:</p>
+              <div class="modal-formula">
+                Projected Value =<br>
+                &nbsp;&nbsp;(Hours Saved × Hourly Rate)<br>
+                &nbsp;&nbsp;× AI Contribution %<br>
+                &nbsp;&nbsp;× Industry Multiplier
+              </div>
+              <p><strong>Hours Saved</strong> — estimated by AI based on tasks identified in the chat transcript.</p>
+              <p style="margin-top:8px;"><strong>Hourly Rate</strong> — preset by role, fully adjustable. Defaults use US national averages.</p>
+              <p style="margin-top:8px;"><strong>AI Contribution %</strong> — the percentage of work attributed to AI vs human, extracted from your session.</p>
+              <p style="margin-top:8px;"><strong>Industry Multiplier</strong> — adjusts value based on the economic impact of your industry. Low-margin industries default lower; high-value industries scale up.</p>
+            </div>
+            <button class="modal-close" onclick="closeFormulaModal()">✕ Close</button>
+          </div>
         </div>
 
         <!-- Section 2 -->
@@ -922,7 +1258,62 @@
   let actionNotes = {};
   let currentReportData = null;
 
-  // ─── AUTH STATE ───
+  // ─── VALUE CALCULATOR ───
+  let calcRate = 65;
+  let calcAiPct = 1.0;
+
+  function setRole(btn, rate) {
+    document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('calc-rate').value = rate;
+    calcRate = rate;
+    recalculate();
+  }
+
+  function updateMultiplierLabel() {
+    const val = parseFloat(document.getElementById('calc-multiplier').value);
+    let label = 'General (1.0x)';
+    if (val <= 0.6) label = 'Non-Profit / Low Margin ('+val+'x)';
+    else if (val <= 0.8) label = 'Retail / Service ('+val+'x)';
+    else if (val <= 1.0) label = 'General / Mixed ('+val+'x)';
+    else if (val <= 1.2) label = 'Tech / SaaS ('+val+'x)';
+    else if (val <= 1.5) label = 'Finance / Consulting ('+val+'x)';
+    else label = 'High Value / Enterprise ('+val+'x)';
+    document.getElementById('mult-label').textContent = label;
+  }
+
+  function recalculate() {
+    const rate = parseFloat(document.getElementById('calc-rate').value) || 0;
+    const hours = parseFloat(document.getElementById('calc-hours').value) || 0;
+    const multiplier = parseFloat(document.getElementById('calc-multiplier').value) || 1.0;
+
+    const projected = hours * rate * calcAiPct * multiplier;
+    const rounded = Math.round(projected / 50) * 50;
+
+    document.getElementById('calc-output').textContent = '$' + rounded.toLocaleString();
+    document.getElementById('calc-formula-display').textContent =
+      `$${rate}/hr × ${hours}h × ${Math.round(calcAiPct * 100)}% AI × ${multiplier}x`;
+
+    // Update the main projected value display
+    if (rounded > 0) {
+      document.getElementById('out-projected').textContent = '$' + rounded.toLocaleString();
+    }
+  }
+
+  function showFormulaModal() {
+    document.getElementById('formula-modal').classList.add('open');
+  }
+
+  function closeFormulaModal() {
+    document.getElementById('formula-modal').classList.remove('open');
+  }
+
+  // Close modal on overlay click
+  document.getElementById('formula-modal')?.addEventListener('click', function(e) {
+    if (e.target === this) closeFormulaModal();
+  });
+
+
   sb.auth.onAuthStateChange((event, session) => {
     if (session?.user) {
       currentUser = session.user;
@@ -1165,6 +1556,13 @@
       document.getElementById('out-human').textContent = summary.humanContribution ?? '—';
       document.getElementById('out-source').textContent = `Source: ${latestReport.name} — ${latestReport.department}`;
       document.getElementById('section-summary').style.display = 'block';
+      document.getElementById('section-calculator').style.display = 'block';
+
+      // Wire calculator with report data
+      const aiPct = parseFloat((summary.aiContribution || '85%').replace('%','')) / 100;
+      calcAiPct = isNaN(aiPct) ? 0.85 : aiPct;
+      document.getElementById('calc-hours').value = summary.hoursSaved || 0;
+      recalculate();
 
       // Section 2
       document.getElementById('out-recap').textContent = chatRecap;
@@ -1266,6 +1664,7 @@
       currentReportData = null;
       displaySessionReports();
       document.getElementById('section-summary').style.display = 'none';
+      document.getElementById('section-calculator').style.display = 'none';
       document.getElementById('section-recap').style.display = 'none';
       document.getElementById('section-actions').style.display = 'none';
       document.getElementById('export-row').style.display = 'none';
