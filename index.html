@@ -742,7 +742,65 @@
   .report-dept { font-size: 0.75rem; color: var(--accent2); font-family: 'Share Tech Mono', monospace; }
   .report-preview { font-size: 0.85rem; color: var(--muted); line-height: 1.5; }
 
-  /* ─── INNOVATION SCORE ─── */
+  /* ─── FILE UPLOAD ─── */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 4px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 12px;
+    background: var(--surface2);
+    position: relative;
+  }
+
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(0,255,136,0.04);
+  }
+
+  .upload-zone.success {
+    border-color: var(--accent);
+    border-style: solid;
+    background: rgba(0,255,136,0.06);
+  }
+
+  .upload-zone.error {
+    border-color: var(--danger);
+    border-style: solid;
+  }
+
+  .upload-icon { font-size: 1.4rem; margin-bottom: 6px; }
+
+  .upload-text {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+  }
+
+  .upload-link { color: var(--accent); text-decoration: underline; }
+
+  .upload-formats {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    opacity: 0.6;
+  }
+
+  .upload-status {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+    margin-top: 8px;
+    min-height: 18px;
+    letter-spacing: 0.05em;
+  }
+
+  .upload-zone.success .upload-status { color: var(--accent); }
+  .upload-zone.error .upload-status { color: var(--danger); }
   .innovation-card { position: relative; }
 
   .innovation-header {
@@ -1279,7 +1337,22 @@
               <input type="text" id="rep-name" placeholder="Name" required>
               <input type="text" id="rep-department" placeholder="Department — Position">
             </div>
-            <textarea id="rep-issue" placeholder="Paste chat transcript here..." required></textarea>
+
+            <!-- File Upload Zone -->
+            <div class="upload-zone" id="upload-zone"
+              ondragover="handleDragOver(event)"
+              ondragleave="handleDragLeave(event)"
+              ondrop="handleDrop(event)"
+              onclick="document.getElementById('file-input').click()">
+              <div class="upload-icon">📎</div>
+              <div class="upload-text">Drop file here or <span class="upload-link">browse</span></div>
+              <div class="upload-formats">PDF · TXT · MD · JSON · HTML</div>
+              <div class="upload-status" id="upload-status"></div>
+            </div>
+            <input type="file" id="file-input" accept=".pdf,.txt,.md,.json,.html"
+              style="display:none" onchange="handleFileSelect(event)">
+
+            <textarea id="rep-issue" placeholder="Paste chat transcript here, or upload a file above..." required></textarea>
             <button type="submit" class="btn btn-primary">Submit Report</button>
           </form>
         </div>
@@ -1652,6 +1725,122 @@
     const initials = name.charAt(0).toUpperCase();
     document.getElementById('user-email').textContent = email;
     document.getElementById('user-avatar').textContent = initials;
+  }
+
+  // ─── FILE UPLOAD ───
+  function handleDragOver(e) {
+    e.preventDefault();
+    document.getElementById('upload-zone').classList.add('dragover');
+  }
+
+  function handleDragLeave(e) {
+    document.getElementById('upload-zone').classList.remove('dragover');
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    document.getElementById('upload-zone').classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) processFile(file);
+  }
+
+  function handleFileSelect(e) {
+    const file = e.target.files[0];
+    if (file) processFile(file);
+  }
+
+  async function processFile(file) {
+    const zone = document.getElementById('upload-zone');
+    const status = document.getElementById('upload-status');
+    zone.className = 'upload-zone';
+    status.textContent = '⏳ Processing ' + file.name + '...';
+
+    try {
+      const ext = file.name.split('.').pop().toLowerCase();
+      let text = '';
+
+      if (ext === 'pdf') {
+        text = await extractPDF(file);
+      } else if (ext === 'json') {
+        text = await extractJSON(file);
+      } else if (['txt', 'md'].includes(ext)) {
+        text = await file.text();
+      } else if (ext === 'html') {
+        const raw = await file.text();
+        const div = document.createElement('div');
+        div.innerHTML = raw;
+        text = div.innerText;
+      } else {
+        throw new Error('Unsupported file type: .' + ext);
+      }
+
+      if (!text || text.trim().length < 20) throw new Error('File appears empty or unreadable');
+
+      document.getElementById('rep-issue').value = text.trim();
+      zone.classList.add('success');
+      status.textContent = '✓ ' + file.name + ' loaded (' + text.length.toLocaleString() + ' chars)';
+
+    } catch (err) {
+      zone.classList.add('error');
+      status.textContent = '✕ ' + err.message;
+    }
+  }
+
+  async function extractPDF(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const base64 = e.target.result.split(',')[1];
+          const response = await fetch(WORKER_URL + '/extract-pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
+            body: JSON.stringify({ pdf: base64 })
+          });
+          if (!response.ok) throw new Error('PDF extraction failed — try copy/paste instead');
+          const data = await response.json();
+          resolve(data.text || '');
+        } catch (err) { reject(err); }
+      };
+      reader.onerror = () => reject(new Error('Could not read PDF'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function extractJSON(file) {
+    const text = await file.text();
+    const json = JSON.parse(text);
+
+    // ChatGPT export: array of conversations
+    if (Array.isArray(json)) {
+      const parts = [];
+      json.forEach(convo => {
+        if (convo.mapping) {
+          Object.values(convo.mapping).forEach(node => {
+            const msg = node.message;
+            if (msg?.content?.parts) {
+              const role = msg.author?.role === 'user' ? 'User' : 'Assistant';
+              const content = msg.content.parts.join(' ').trim();
+              if (content) parts.push(role + ': ' + content);
+            }
+          });
+        }
+      });
+      if (parts.length > 0) return parts.join('\n\n');
+    }
+
+    // Claude / generic messages array
+    if (json.messages && Array.isArray(json.messages)) {
+      return json.messages.map(m => {
+        const role = m.role === 'user' ? 'User' : 'Assistant';
+        const content = Array.isArray(m.content)
+          ? m.content.filter(c => c.type === 'text').map(c => c.text).join(' ')
+          : (m.content || '');
+        return role + ': ' + content;
+      }).join('\n\n');
+    }
+
+    return JSON.stringify(json, null, 2);
   }
 
   // ─── AUTH FUNCTIONS ───
