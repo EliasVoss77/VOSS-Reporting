@@ -813,6 +813,41 @@
     margin-bottom: 10px;
   }
 
+  /* ─── SHARE COMING SOON ─── */
+  .share-coming-soon {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: rgba(0,200,255,0.04);
+    border: 1px solid rgba(0,200,255,0.15);
+    border-radius: 3px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  .share-coming-icon { font-size: 0.9rem; }
+
+  .share-coming-text {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    flex: 1;
+  }
+
+  .share-coming-badge {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    color: var(--accent2);
+    border: 1px solid rgba(0,200,255,0.3);
+    padding: 2px 8px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
   /* ─── FILE UPLOAD ─── */
   .upload-zone {
     border: 2px dashed var(--border);
@@ -1410,11 +1445,11 @@
             </div>
 
             <!-- Share Link Input -->
-            <div class="share-link-row">
-              <input type="url" id="share-link-input" placeholder="Paste ChatGPT or Claude share link..." class="share-link-input">
-              <button type="button" class="share-link-btn" onclick="fetchShareLink()">Fetch</button>
+            <div class="share-coming-soon">
+              <span class="share-coming-icon">🔗</span>
+              <span class="share-coming-text">Share link import — coming with the VOSS Browser Extension</span>
+              <span class="share-coming-badge">Soon</span>
             </div>
-            <div id="share-link-status" class="share-link-status"></div>
 
             <!-- File Upload Zone -->
             <div class="upload-zone" id="upload-zone"
