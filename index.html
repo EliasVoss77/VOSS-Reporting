@@ -329,26 +329,33 @@
   .report-log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
   .report-log-delete {
-    display: none;
     background: transparent;
-    border: none;
+    border: 1px solid rgba(255,59,48,0.3);
     color: var(--danger);
-    font-size: 0.7rem;
+    font-size: 0.6rem;
     cursor: pointer;
-    padding: 2px 4px;
+    padding: 2px 7px;
     border-radius: 2px;
-    float: right;
-    margin-top: -20px;
+    font-family: 'Share Tech Mono', monospace;
+    letter-spacing: 0.05em;
+    transition: all 0.15s;
+    flex-shrink: 0;
   }
 
-  .report-log-item:hover .report-log-delete { display: block; }
+  .report-log-delete:hover {
+    background: rgba(255,59,48,0.1);
+    border-color: var(--danger);
+  }
 
   .report-log-item {
-    padding: 10px 20px;
+    padding: 10px 14px;
     cursor: pointer;
     border-left: 2px solid transparent;
     transition: all 0.15s;
     position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
   }
 
   .report-log-item:hover { background: var(--surface2); border-left-color: var(--muted); }
@@ -1383,6 +1390,10 @@
         <input type="checkbox" id="terms-checkbox" />
         <span>I agree to the <a href="https://vossintel.com/terms.html" target="_blank">Terms of Service</a> and <a href="https://vossintel.com/privacy.html" target="_blank">Privacy Policy</a></span>
       </label>
+      <label class="auth-checkbox">
+        <input type="checkbox" id="email-opt-in-checkbox" checked />
+        <span>I'd like to receive product updates and news from VOSS Intel</span>
+      </label>
       <div id="signup-message" class="auth-message"></div>
       <button class="auth-btn" onclick="handleSignup()">Create Account</button>
     </div>
@@ -2101,19 +2112,29 @@
     const email = document.getElementById('signup-email').value.trim();
     const password = document.getElementById('signup-password').value;
     const terms = document.getElementById('terms-checkbox').checked;
+    const emailOptIn = document.getElementById('email-opt-in-checkbox').checked;
 
     if (!name || !email || !password) { showAuthMessage('signup', 'Please fill in all fields', 'error'); return; }
     if (password.length < 8) { showAuthMessage('signup', 'Password must be at least 8 characters', 'error'); return; }
     if (!terms) { showAuthMessage('signup', 'Please accept the Terms of Service and Privacy Policy', 'error'); return; }
 
-    const { error } = await sb.auth.signUp({
+    const { data, error } = await sb.auth.signUp({
       email, password,
-      options: { data: { full_name: name } }
+      options: { data: { full_name: name, email_opt_in: emailOptIn } }
     });
 
     if (error) {
       showAuthMessage('signup', error.message, 'error');
     } else {
+      // Save opt-in preference to profiles table
+      if (data?.user) {
+        await sb.from('profiles').upsert({
+          id: data.user.id,
+          email: email,
+          full_name: name,
+          email_opt_in: emailOptIn
+        });
+      }
       showAuthMessage('signup', '✓ Check your email to confirm your account!', 'success');
     }
   }
@@ -2173,12 +2194,16 @@
       const item = document.createElement('div');
       item.className = 'report-log-item';
       item.innerHTML = `
-        <div class="report-log-category">${r.category || 'Uncategorized'}</div>
-        <div class="report-log-meta">
-          <span class="report-log-value">${r.projected_value || '—'}</span>
-          <span class="report-log-date">${date}</span>
-        </div>
-        <button class="report-log-delete" onclick="deleteReport('${r.id}', event)" title="Delete report">✕</button>`;
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+          <div style="flex:1;min-width:0;">
+            <div class="report-log-category">${r.category || 'Uncategorized'}</div>
+            <div class="report-log-meta">
+              <span class="report-log-value">${r.projected_value || '—'}</span>
+              <span class="report-log-date">${date}</span>
+            </div>
+          </div>
+          <button class="report-log-delete" onclick="deleteReport('${r.id}', event)">✕ Del</button>
+        </div>`;
       item.addEventListener('click', (e) => {
         if (!e.target.classList.contains('report-log-delete')) {
           loadHistoricalReport(r, item);
