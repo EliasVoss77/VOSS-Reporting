@@ -820,6 +820,91 @@
     margin-bottom: 10px;
   }
 
+  /* ─── PLAN & UPGRADE UI ─── */
+  .user-plan {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 2px;
+    display: inline-block;
+    margin-top: 3px;
+  }
+
+  .user-plan.free { background: rgba(255,255,255,0.07); color: var(--muted); border: 1px solid var(--border); }
+  .user-plan.pro { background: rgba(0,255,136,0.12); color: var(--accent); border: 1px solid rgba(0,255,136,0.3); }
+
+  .upgrade-banner {
+    margin: 10px 14px;
+    padding: 10px 12px;
+    background: rgba(0,255,136,0.04);
+    border: 1px solid rgba(0,255,136,0.15);
+    border-radius: 3px;
+  }
+
+  .upgrade-banner-text {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    margin-bottom: 8px;
+    line-height: 1.5;
+  }
+
+  .upgrade-banner-btn {
+    width: 100%;
+    padding: 8px;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 2px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .upgrade-banner-btn:hover { background: #00cc6a; }
+
+  .history-lock {
+    display: none;
+    text-align: center;
+    padding: 20px 14px;
+    color: var(--muted);
+  }
+
+  .history-lock-icon { font-size: 1.4rem; margin-bottom: 8px; }
+
+  .history-lock-text {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+
+  .history-lock-btn {
+    padding: 7px 14px;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    border-radius: 2px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .history-lock-btn:hover { background: rgba(0,255,136,0.08); }
+
+  /* Hide upgrade banner for pro users */
+  .is-pro #upgrade-banner { display: none; }
+  .is-pro #history-lock { display: none !important; }
+  .is-pro #report-log-section { display: block !important; }
+
   /* ─── SHARE COMING SOON ─── */
   .share-coming-soon {
     display: flex;
@@ -1420,16 +1505,31 @@
         <div class="user-avatar" id="user-avatar">—</div>
         <div class="user-info">
           <div class="user-email" id="user-email">—</div>
-          <div class="user-plan">Free Plan</div>
+          <div class="user-plan free" id="user-plan-badge">FREE</div>
         </div>
       </div>
 
       <div class="sidebar-section-label">// Actions</div>
       <button class="sidebar-new-btn" onclick="newReport()">⚡ New Report</button>
 
+      <!-- Upgrade banner for free users -->
+      <div id="upgrade-banner" class="upgrade-banner">
+        <div class="upgrade-banner-text">⚡ Unlock unlimited reports, history & exports</div>
+        <button class="upgrade-banner-btn" onclick="showUpgradePrompt()">Upgrade to Pro — $24/mo</button>
+      </div>
+
       <div class="sidebar-section-label">// Report History</div>
-      <div class="report-log" id="report-log">
-        <div class="report-log-empty">[ NO REPORTS YET ]<br>Submit your first report<br>to begin tracking value</div>
+      <!-- Free tier lock -->
+      <div id="history-lock" class="history-lock">
+        <div class="history-lock-icon">🔒</div>
+        <div class="history-lock-text">Report history is a Pro feature</div>
+        <button class="history-lock-btn" onclick="showUpgradePrompt()">Upgrade to Pro</button>
+      </div>
+      <!-- Pro history -->
+      <div id="report-log-section">
+        <div class="report-log" id="report-log">
+          <div class="report-log-empty">[ NO REPORTS YET ]<br>Submit your first report<br>to begin tracking value</div>
+        </div>
       </div>
 
       <div class="sidebar-footer">
@@ -2163,6 +2263,96 @@
     window.scrollTo(0, 0);
   }
 
+  // ─── PLAN & USAGE ───
+  let userPlan = 'free'; // 'free' or 'pro'
+  let reportsToday = 0;
+  const FREE_LIMIT = 5;
+  const UPGRADE_URL = 'https://vossintel.lemonsqueezy.com/buy/your-product-id'; // update after LS setup
+
+  async function loadUserPlan() {
+    if (!currentUser) return;
+    const { data } = await sb.from('profiles').select('plan, report_count_today, report_count_reset').eq('id', currentUser.id).single();
+    if (!data) return;
+
+    // Reset count if it's a new day
+    const today = new Date().toISOString().split('T')[0];
+    if (data.report_count_reset !== today) {
+      await sb.from('profiles').update({ report_count_today: 0, report_count_reset: today }).eq('id', currentUser.id);
+      reportsToday = 0;
+    } else {
+      reportsToday = data.report_count_today || 0;
+    }
+
+    userPlan = data.plan || 'free';
+    updatePlanUI();
+  }
+
+  async function incrementReportCount() {
+    if (!currentUser) return;
+    reportsToday++;
+    const today = new Date().toISOString().split('T')[0];
+    await sb.from('profiles').update({
+      report_count_today: reportsToday,
+      report_count_reset: today
+    }).eq('id', currentUser.id);
+    updatePlanUI();
+  }
+
+  function updatePlanUI() {
+    // Update sidebar plan badge
+    const planEl = document.getElementById('user-plan-badge');
+    if (planEl) {
+      if (userPlan === 'pro') {
+        planEl.textContent = 'PRO';
+        planEl.className = 'user-plan pro';
+      } else {
+        const remaining = Math.max(0, FREE_LIMIT - reportsToday);
+        planEl.textContent = `FREE — ${remaining}/${FREE_LIMIT} today`;
+        planEl.className = 'user-plan free';
+      }
+    }
+
+    // Show/hide history based on plan
+    const historySection = document.getElementById('report-log-section');
+    const historyLock = document.getElementById('history-lock');
+    if (userPlan === 'free') {
+      if (historySection) historySection.style.display = 'none';
+      if (historyLock) historyLock.style.display = 'block';
+    } else {
+      if (historySection) historySection.style.display = 'block';
+      if (historyLock) historyLock.style.display = 'none';
+    }
+
+    // Show/hide export based on plan
+    const exportRow = document.getElementById('export-row');
+    const exportLock = document.getElementById('export-lock');
+    if (exportRow && exportLock) {
+      if (userPlan === 'pro') {
+        exportLock.style.display = 'none';
+      } else {
+        exportLock.style.display = 'flex';
+      }
+    }
+  }
+
+  function canSubmitReport() {
+    if (userPlan === 'pro') return true;
+    if (reportsToday >= FREE_LIMIT) {
+      setStatus(`Daily limit reached (${FREE_LIMIT}/day on Free plan) — Upgrade to Pro for unlimited reports`, 'error');
+      showUpgradePrompt();
+      return false;
+    }
+    return true;
+  }
+
+  function showUpgradePrompt() {
+    document.getElementById('upgrade-modal').classList.add('open');
+  }
+
+  function closeUpgradeModal() {
+    document.getElementById('upgrade-modal').classList.remove('open');
+  }
+
   // ─── REPORT HISTORY ───
   async function deleteReport(id, event) {
     event.stopPropagation();
@@ -2288,6 +2478,7 @@
 
   async function generateAiReport() {
     if (sessionReports.length === 0) { setStatus('No reports to analyze — submit a report first', 'error'); return; }
+    if (!canSubmitReport()) return;
 
     setStatus('Analyzing with VOSS AI...', 'loading');
     document.getElementById('section-summary').style.display = 'none';
@@ -2413,7 +2604,8 @@
           console.error('Save error:', saveError);
           setStatus('Analysis complete — note: save failed (' + saveError.message + ')', 'error');
         } else {
-          loadReportHistory();
+          await incrementReportCount();
+          if (userPlan === 'pro') loadReportHistory();
           setStatus('Analysis complete — saved to your profile ✓', 'success');
         }
       } else {
@@ -2565,6 +2757,7 @@
   }
 
   function exportPDF() {
+    if (userPlan !== 'pro') { showUpgradePrompt(); return; }
     document.getElementById('export-row').style.display = 'none';
     document.querySelectorAll('.btn-row').forEach(el => el.style.display = 'none');
     document.getElementById('status-bar').style.display = 'none';
@@ -2595,5 +2788,34 @@
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
   }
 </script>
+<!-- Upgrade Modal -->
+<div class="modal-overlay" id="upgrade-modal">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-title">⚡ Upgrade to VOSS Pro</div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:14px;">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:0.65rem;letter-spacing:0.15em;color:var(--muted);margin-bottom:8px;">FREE</div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:10px;">$0/mo</div>
+          <div style="font-size:0.78rem;color:var(--muted);line-height:1.8;">
+            5 reports/day<br>Full report output<br>In-app view only<br><span style="opacity:0.4;">No history</span><br><span style="opacity:0.4;">No export</span>
+          </div>
+        </div>
+        <div style="background:rgba(0,255,136,0.05);border:1px solid rgba(0,255,136,0.3);border-radius:3px;padding:14px;position:relative;">
+          <div style="position:absolute;top:-10px;right:10px;background:var(--accent);color:#000;font-family:'Share Tech Mono',monospace;font-size:0.6rem;padding:2px 8px;border-radius:2px;font-weight:700;">BEST VALUE</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:0.65rem;letter-spacing:0.15em;color:var(--accent);margin-bottom:8px;">PRO</div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--accent);margin-bottom:10px;">$24/mo</div>
+          <div style="font-size:0.78rem;color:var(--text);line-height:1.8;">
+            Unlimited reports<br>Full report output<br>Export PDF<br>Report history<br>Priority processing
+          </div>
+        </div>
+      </div>
+      <a href="https://vossintel.lemonsqueezy.com" target="_blank" style="display:block;background:var(--accent);color:#000;text-align:center;padding:14px;border-radius:3px;font-family:'Share Tech Mono',monospace;font-weight:700;font-size:0.85rem;letter-spacing:0.1em;text-decoration:none;transition:all 0.2s;" onmouseover="this.style.background='#00cc6a'" onmouseout="this.style.background='var(--accent)'">
+        UPGRADE TO PRO — $24/MONTH
+      </a>
+    </div>
+    <button class="modal-close" onclick="closeUpgradeModal()">✕ Maybe later</button>
+  </div>
+</div>
 </body>
 </html>
