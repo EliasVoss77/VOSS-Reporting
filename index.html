@@ -1520,14 +1520,14 @@
       </div>
 
       <div class="sidebar-section-label">// Report History</div>
-      <!-- Free tier lock -->
-      <div id="history-lock" class="history-lock">
+      <!-- Free tier lock — shown by default, hidden for pro -->
+      <div id="history-lock" class="history-lock" style="display:block;">
         <div class="history-lock-icon">🔒</div>
         <div class="history-lock-text">Report history is a Pro feature</div>
         <button class="history-lock-btn" onclick="showUpgradePrompt()">Upgrade to Pro</button>
       </div>
-      <!-- Pro history -->
-      <div id="report-log-section">
+      <!-- Pro history — hidden by default, shown for pro -->
+      <div id="report-log-section" style="display:none;">
         <div class="report-log" id="report-log">
           <div class="report-log-empty">[ NO REPORTS YET ]<br>Submit your first report<br>to begin tracking value</div>
         </div>
@@ -2273,7 +2273,6 @@
   async function loadUserPlan() {
     if (!currentUser) return;
     try {
-      // Fetch just the plan field — most reliable
       const { data, error } = await sb
         .from('profiles')
         .select('plan, report_count_today, report_count_reset')
@@ -2281,8 +2280,6 @@
         .single();
 
       if (error) {
-        console.error('loadUserPlan error:', error.message);
-        // Fallback: try plan only
         const { data: b } = await sb.from('profiles').select('plan').eq('id', currentUser.id).single();
         userPlan = b?.plan || 'free';
       } else {
@@ -2296,11 +2293,13 @@
         }
       }
     } catch (e) {
-      console.error('loadUserPlan exception:', e);
       userPlan = 'free';
     }
 
-    console.log('Plan loaded:', userPlan, 'for user:', currentUser.email);
+    // Owner account always Pro
+    if (currentUser.email === 'eliasvoss77@gmail.com') userPlan = 'pro';
+
+    console.log('Plan loaded:', userPlan, 'for:', currentUser.email);
     updatePlanUI();
   }
 
@@ -2323,15 +2322,15 @@
 
     if (userPlan === 'pro') {
       if (planEl) { planEl.textContent = 'PRO'; planEl.className = 'user-plan pro'; }
-      if (upgradeBanner) upgradeBanner.style.display = 'none';
-      if (historyLock) historyLock.style.display = 'none';
-      if (historySection) historySection.style.display = 'block';
+      if (upgradeBanner) upgradeBanner.style.cssText = 'display:none!important';
+      if (historyLock) historyLock.style.cssText = 'display:none!important';
+      if (historySection) historySection.style.cssText = 'display:block!important';
     } else {
       const remaining = Math.max(0, FREE_LIMIT - reportsToday);
       if (planEl) { planEl.textContent = `FREE — ${remaining}/${FREE_LIMIT} today`; planEl.className = 'user-plan free'; }
-      if (upgradeBanner) upgradeBanner.style.display = 'block';
-      if (historyLock) historyLock.style.display = 'block';
-      if (historySection) historySection.style.display = 'none';
+      if (upgradeBanner) upgradeBanner.style.cssText = 'display:block!important';
+      if (historyLock) historyLock.style.cssText = 'display:block!important';
+      if (historySection) historySection.style.cssText = 'display:none!important';
     }
   }
 
