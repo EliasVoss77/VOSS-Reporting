@@ -2265,10 +2265,15 @@
   }
 
   // ─── PLAN & USAGE ───
-  let userPlan = 'free'; // 'free' or 'pro'
+  let userPlan = 'pro'; // default pro for owner account
   let reportsToday = 0;
   const FREE_LIMIT = 5;
-  const UPGRADE_URL = 'https://vossintel.lemonsqueezy.com/buy/your-product-id'; // update after LS setup
+  const UPGRADE_URL = 'https://vossintel.lemonsqueezy.com';
+
+  // Apply pro UI immediately — don't wait for auth
+  document.addEventListener('DOMContentLoaded', () => {
+    updatePlanUI();
+  });
 
   async function loadUserPlan() {
     if (!currentUser) return;
