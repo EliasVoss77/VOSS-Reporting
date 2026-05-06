@@ -1506,31 +1506,16 @@
         <div class="user-avatar" id="user-avatar">—</div>
         <div class="user-info">
           <div class="user-email" id="user-email">—</div>
-          <div class="user-plan free" id="user-plan-badge">FREE</div>
+          <div class="user-plan free" id="user-plan-badge">FREE PLAN</div>
         </div>
       </div>
 
       <div class="sidebar-section-label">// Actions</div>
       <button class="sidebar-new-btn" onclick="newReport()">⚡ New Report</button>
 
-      <!-- Upgrade banner for free users -->
-      <div id="upgrade-banner" class="upgrade-banner">
-        <div class="upgrade-banner-text">⚡ Unlock unlimited reports, history & exports</div>
-        <button class="upgrade-banner-btn" onclick="showUpgradePrompt()">Upgrade to Pro — $24/mo</button>
-      </div>
-
       <div class="sidebar-section-label">// Report History</div>
-      <!-- Free tier lock — shown by default, hidden for pro -->
-      <div id="history-lock" class="history-lock" style="display:block;">
-        <div class="history-lock-icon">🔒</div>
-        <div class="history-lock-text">Report history is a Pro feature</div>
-        <button class="history-lock-btn" onclick="showUpgradePrompt()">Upgrade to Pro</button>
-      </div>
-      <!-- Pro history — hidden by default, shown for pro -->
-      <div id="report-log-section" style="display:none;">
-        <div class="report-log" id="report-log">
-          <div class="report-log-empty">[ NO REPORTS YET ]<br>Submit your first report<br>to begin tracking value</div>
-        </div>
+      <div class="report-log" id="report-log">
+        <div class="report-log-empty">[ NO REPORTS YET ]<br>Submit your first report<br>to begin tracking value</div>
       </div>
 
       <div class="sidebar-footer">
@@ -2265,10 +2250,9 @@
   }
 
   // ─── PLAN & USAGE ───
-  let userPlan = 'pro'; // default pro for owner account
+  let userPlan = 'free';
   let reportsToday = 0;
   const FREE_LIMIT = 5;
-  const UPGRADE_URL = 'https://vossintel.lemonsqueezy.com';
 
   // Apply pro UI immediately — don't wait for auth
   document.addEventListener('DOMContentLoaded', () => {
@@ -2366,7 +2350,7 @@
   }
 
   async function loadReportHistory() {
-    if (!currentUser || userPlan !== 'pro') return;
+    if (!currentUser) return;
     const { data, error } = await sb
       .from('reports')
       .select('*')
@@ -2484,7 +2468,6 @@
 
   async function generateAiReport() {
     if (sessionReports.length === 0) { setStatus('No reports to analyze — submit a report first', 'error'); return; }
-    if (!canSubmitReport()) return;
 
     setStatus('Analyzing with VOSS AI...', 'loading');
     document.getElementById('section-summary').style.display = 'none';
@@ -2610,8 +2593,7 @@
           console.error('Save error:', saveError);
           setStatus('Analysis complete — note: save failed (' + saveError.message + ')', 'error');
         } else {
-          await incrementReportCount();
-          if (userPlan === 'pro') loadReportHistory();
+          loadReportHistory();
           setStatus('Analysis complete — saved to your profile ✓', 'success');
         }
       } else {
@@ -2763,7 +2745,6 @@
   }
 
   function exportPDF() {
-    if (userPlan !== 'pro') { showUpgradePrompt(); return; }
     document.getElementById('export-row').style.display = 'none';
     document.querySelectorAll('.btn-row').forEach(el => el.style.display = 'none');
     document.getElementById('status-bar').style.display = 'none';
@@ -2784,13 +2765,10 @@
       document.getElementById('app-screen').style.minHeight = '100vh';
       document.getElementById('user-email').textContent = currentUser.email;
       document.getElementById('user-avatar').textContent = (currentUser.email?.[0] || '?').toUpperCase();
-      await loadUserPlan();
-      if (userPlan === 'pro') loadReportHistory();
+      loadReportHistory();
     } else {
       document.getElementById('auth-screen').style.display = 'flex';
       document.getElementById('app-screen').style.display = 'none';
-      userPlan = 'free';
-      reportsToday = 0;
     }
   });
 
