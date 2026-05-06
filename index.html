@@ -2299,39 +2299,22 @@
   }
 
   function updatePlanUI() {
-    // Update sidebar plan badge
     const planEl = document.getElementById('user-plan-badge');
-    if (planEl) {
-      if (userPlan === 'pro') {
-        planEl.textContent = 'PRO';
-        planEl.className = 'user-plan pro';
-      } else {
-        const remaining = Math.max(0, FREE_LIMIT - reportsToday);
-        planEl.textContent = `FREE — ${remaining}/${FREE_LIMIT} today`;
-        planEl.className = 'user-plan free';
-      }
-    }
-
-    // Show/hide history based on plan
-    const historySection = document.getElementById('report-log-section');
+    const upgradeBanner = document.getElementById('upgrade-banner');
     const historyLock = document.getElementById('history-lock');
-    if (userPlan === 'free') {
-      if (historySection) historySection.style.display = 'none';
-      if (historyLock) historyLock.style.display = 'block';
-    } else {
-      if (historySection) historySection.style.display = 'block';
-      if (historyLock) historyLock.style.display = 'none';
-    }
+    const historySection = document.getElementById('report-log-section');
 
-    // Show/hide export based on plan
-    const exportRow = document.getElementById('export-row');
-    const exportLock = document.getElementById('export-lock');
-    if (exportRow && exportLock) {
-      if (userPlan === 'pro') {
-        exportLock.style.display = 'none';
-      } else {
-        exportLock.style.display = 'flex';
-      }
+    if (userPlan === 'pro') {
+      if (planEl) { planEl.textContent = 'PRO'; planEl.className = 'user-plan pro'; }
+      if (upgradeBanner) upgradeBanner.style.display = 'none';
+      if (historyLock) historyLock.style.display = 'none';
+      if (historySection) historySection.style.display = 'block';
+    } else {
+      const remaining = Math.max(0, FREE_LIMIT - reportsToday);
+      if (planEl) { planEl.textContent = `FREE — ${remaining}/${FREE_LIMIT} today`; planEl.className = 'user-plan free'; }
+      if (upgradeBanner) upgradeBanner.style.display = 'block';
+      if (historyLock) historyLock.style.display = 'block';
+      if (historySection) historySection.style.display = 'none';
     }
   }
 
@@ -2362,7 +2345,7 @@
   }
 
   async function loadReportHistory() {
-    if (!currentUser) return;
+    if (!currentUser || userPlan !== 'pro') return;
     const { data, error } = await sb
       .from('reports')
       .select('*')
@@ -2373,6 +2356,8 @@
     if (error) { console.error('Error loading reports:', error); return; }
 
     const log = document.getElementById('report-log');
+    if (!log) return;
+
     if (!data || data.length === 0) {
       log.innerHTML = '<div class="report-log-empty">[ NO REPORTS YET ]<br>Submit your first report<br>to begin tracking value</div>';
       return;
