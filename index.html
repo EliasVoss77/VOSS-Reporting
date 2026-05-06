@@ -2271,20 +2271,46 @@
 
   async function loadUserPlan() {
     if (!currentUser) return;
-    const { data } = await sb.from('profiles').select('plan, report_count_today, report_count_reset').eq('id', currentUser.id).single();
-    if (!data) return;
+    try {
+      const { data, error } = await sb
+        .from('profiles')
+        .select('plan, report_count_today, report_count_reset')
+        .eq('id', currentUser.id)
+        .single();
 
-    // Reset count if it's a new day
-    const today = new Date().toISOString().split('T')[0];
-    if (data.report_count_reset !== today) {
-      await sb.from('profiles').update({ report_count_today: 0, report_count_reset: today }).eq('id', currentUser.id);
-      reportsToday = 0;
-    } else {
-      reportsToday = data.report_count_today || 0;
+      if (error) {
+        console.error('loadUserPlan error:', error.message);
+        // Try fetching just the plan field if extended columns don't exist yet
+        const { data: basic } = await sb
+          .from('profiles')
+          .select('plan')
+          .eq('id', currentUser.id)
+          .single();
+        userPlan = basic?.plan || 'free';
+        reportsToday = 0;
+        updatePlanUI();
+        return;
+      }
+
+      // Reset count if it's a new day
+      const today = new Date().toISOString().split('T')[0];
+      if (data.report_count_reset !== today) {
+        await sb.from('profiles').update({
+          report_count_today: 0,
+          report_count_reset: today
+        }).eq('id', currentUser.id);
+        reportsToday = 0;
+      } else {
+        reportsToday = data.report_count_today || 0;
+      }
+
+      userPlan = data.plan || 'free';
+      updatePlanUI();
+    } catch (e) {
+      console.error('loadUserPlan exception:', e);
+      userPlan = 'free';
+      updatePlanUI();
     }
-
-    userPlan = data.plan || 'free';
-    updatePlanUI();
   }
 
   async function incrementReportCount() {
@@ -2753,6 +2779,24 @@
       document.getElementById('status-bar').style.display = 'flex';
     }, 1000);
   }
+
+  // ─── AUTH STATE ───
+  sb.auth.onAuthStateChange(async (event, session) => {
+    currentUser = session?.user || null;
+    if (currentUser) {
+      document.getElementById('auth-screen').style.display = 'none';
+      document.getElementById('app-screen').style.display = 'flex';
+      document.getElementById('user-email').textContent = currentUser.email;
+      document.getElementById('user-avatar').textContent = (currentUser.email?.[0] || '?').toUpperCase();
+      await loadUserPlan();
+      if (userPlan === 'pro') loadReportHistory();
+    } else {
+      document.getElementById('auth-screen').style.display = 'flex';
+      document.getElementById('app-screen').style.display = 'none';
+      userPlan = 'free';
+      reportsToday = 0;
+    }
+  });
 
   function shareReport() {
     const source = document.getElementById('out-source').textContent || 'VOSS Report';
