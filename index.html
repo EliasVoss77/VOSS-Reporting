@@ -2480,13 +2480,44 @@
     document.getElementById('status-text').textContent = msg;
   }
 
+  // ─── PROGRESS STAGES ───
+  let progressInterval = null;
+
+  function startProgress() {
+    const stages = [
+      { msg: '📋 Reading transcript...', delay: 0 },
+      { msg: '🔍 Identifying tasks and outcomes...', delay: 3000 },
+      { msg: '💰 Calculating business value...', delay: 8000 },
+      { msg: '⚡ Scoring hybrid innovation...', delay: 14000 },
+      { msg: '📊 Building your report...', delay: 20000 },
+      { msg: '✨ Almost there...', delay: 26000 },
+    ];
+
+    stages.forEach(({ msg, delay }) => {
+      setTimeout(() => {
+        const statusEl = document.getElementById('status-text');
+        const statusDot = document.querySelector('.status-dot');
+        if (statusEl && statusEl.textContent !== 'Error') {
+          statusEl.textContent = msg;
+          if (statusDot) statusDot.style.background = 'var(--accent2)';
+        }
+      }, delay);
+    });
+  }
+
+  function stopProgress() {
+    if (progressInterval) { clearInterval(progressInterval); progressInterval = null; }
+  }
+
   async function generateAiReport() {
     if (sessionReports.length === 0) { setStatus('No reports to analyze — submit a report first', 'error'); return; }
     if (!canSubmitReport()) return;
 
-    setStatus('Analyzing with VOSS AI...', 'loading');
+    setStatus('📋 Reading transcript...', 'loading');
+    startProgress();
     document.getElementById('section-summary').style.display = 'none';
     document.getElementById('section-recap').style.display = 'none';
+    document.getElementById('section-innovation').style.display = 'none';
     document.getElementById('section-actions').style.display = 'none';
     document.getElementById('export-row').style.display = 'none';
 
@@ -2501,10 +2532,13 @@
 
       if (!response.ok) {
         const errText = await response.text();
+        stopProgress();
         throw new Error('Worker ' + response.status + ': ' + errText.substring(0, 200));
       }
 
       const data = await response.json();
+      stopProgress();
+      setStatus('✓ Report complete!', 'success');
       currentReportData = { ...data, latestReport };
 
       const summary = data.summary || {};
@@ -2606,17 +2640,18 @@
         });
         if (saveError) {
           console.error('Save error:', saveError);
-          setStatus('Analysis complete — note: save failed (' + saveError.message + ')', 'error');
+          setStatus('⚠️ Analysis complete — save failed (' + saveError.message + ')', 'error');
         } else {
           await incrementReportCount();
           loadReportHistory();
-          setStatus('Analysis complete — saved to your profile ✓', 'success');
+          setStatus('✅ Analysis complete — saved to your profile ✓', 'success');
         }
       } else {
         setStatus('Analysis complete', 'success');
       }
 
     } catch (err) {
+      stopProgress();
       console.error(err);
       setStatus('Error: ' + err.message, 'error');
     }
