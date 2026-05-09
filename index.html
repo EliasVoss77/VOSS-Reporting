@@ -2888,6 +2888,19 @@
     }
   });
 
+  async function handleSignOut() {
+    await sb.auth.signOut();
+    currentUser = null;
+    userPlan = 'free';
+    reportsToday = 0;
+    sessionReports = [];
+    actionNotes = {};
+    currentReportData = null;
+    rawActionItems = [];
+    document.getElementById('app-screen').style.display = 'none';
+    document.getElementById('auth-screen').style.display = 'flex';
+  }
+
   function shareReport() {
     const source = document.getElementById('out-source').textContent || 'VOSS Report';
     const hours = document.getElementById('out-hours').textContent;
