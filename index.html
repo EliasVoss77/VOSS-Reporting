@@ -2277,16 +2277,12 @@
   }
 
   async function handleSignOut() {
-    await sb.auth.signOut();
-    currentUser = null;
-    userPlan = 'free';
-    reportsToday = 0;
-    sessionReports = [];
-    actionNotes = {};
-    currentReportData = null;
-    rawActionItems = [];
-    document.getElementById('app-screen').style.display = 'none';
-    document.getElementById('auth-screen').style.display = 'flex';
+    try {
+      await sb.auth.signOut();
+    } catch(e) {
+      console.error('Sign out error:', e);
+    }
+    window.location.href = window.location.origin + window.location.pathname;
   }
 
   // ─── SIDEBAR ───
