@@ -1575,7 +1575,11 @@
           <a href="https://vossintel.com/privacy.html" target="_blank">Privacy</a>
           <a href="mailto:service@vossintel.com">Contact</a>
         </div>
-        <button class="signout-btn" onclick="sb.auth.signOut().then(() => window.location.reload())">↩ Sign Out</button>
+        <button class="signout-btn" onclick="
+          Object.keys(localStorage).forEach(k => { if(k.includes('supabase') || k.includes('sb-')) localStorage.removeItem(k); });
+          Object.keys(sessionStorage).forEach(k => { if(k.includes('supabase') || k.includes('sb-')) sessionStorage.removeItem(k); });
+          window.location.reload();
+        ">↩ Sign Out</button>
       </div>
     </aside>
 
