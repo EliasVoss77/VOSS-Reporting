@@ -1600,7 +1600,7 @@
               ondragleave="handleDragLeave(event)"
               ondrop="handleDrop(event)"
               onclick="document.getElementById('file-input').click()">
-              <div class="upload-icon">📎</div>
+              <div class="upload-icon">⬇️</div>
               <div class="upload-text">Drop file here or <span class="upload-link">browse</span></div>
               <div class="upload-formats">PDF · TXT · MD · JSON · HTML</div>
               <div class="upload-status" id="upload-status"></div>
@@ -2536,7 +2536,7 @@
   }
 
   // ─── PROGRESS STAGES ───
-  let progressInterval = null;
+  let progressTimers = [];
 
   function startProgress() {
     const stages = [
@@ -2548,20 +2548,19 @@
       { msg: '✨ Almost there...', delay: 26000 },
     ];
 
+    progressTimers = [];
     stages.forEach(({ msg, delay }) => {
-      setTimeout(() => {
+      const t = setTimeout(() => {
         const statusEl = document.getElementById('status-text');
-        const statusDot = document.querySelector('.status-dot');
-        if (statusEl && statusEl.textContent !== 'Error') {
-          statusEl.textContent = msg;
-          if (statusDot) statusDot.style.background = 'var(--accent2)';
-        }
+        if (statusEl) statusEl.textContent = msg;
       }, delay);
+      progressTimers.push(t);
     });
   }
 
   function stopProgress() {
-    if (progressInterval) { clearInterval(progressInterval); progressInterval = null; }
+    progressTimers.forEach(t => clearTimeout(t));
+    progressTimers = [];
   }
 
   async function generateAiReport() {
