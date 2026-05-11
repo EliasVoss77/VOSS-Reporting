@@ -1,334 +1,3072 @@
-export default {
-  async fetch(request, env) {
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VOSS Intel — AI Value Reports</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #080b0f;
+    --surface: #0f1318;
+    --surface2: #161c24;
+    --surface3: #1c2430;
+    --border: #1e2a38;
+    --border-light: #243040;
+    --accent: #00e57a;
+    --accent-dim: rgba(0,229,122,0.12);
+    --accent2: #38bdf8;
+    --accent2-dim: rgba(56,189,248,0.1);
+    --danger: #f87171;
+    --yellow: #fbbf24;
+    --text: #e2e8f0;
+    --text-secondary: #94a3b8;
+    --muted: #64748b;
+    --sidebar-w: 272px;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --radius-lg: 14px;
+    --shadow: 0 4px 24px rgba(0,0,0,0.4);
+    --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
+    --glow: 0 0 24px rgba(0,229,122,0.12);
+  }
 
-    const corsHeaders = {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, x-api-key"
-    };
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    if (request.method === "OPTIONS") {
-      return new Response(null, { headers: corsHeaders });
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    font-size: 14px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ─── AUTH SCREEN ─── */
+  #auth-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #auth-screen::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+
+  .auth-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 48px 40px;
+    width: 100%;
+    max-width: 420px;
+    position: relative;
+    z-index: 1;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  .auth-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+  }
+
+  .auth-logo {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  .auth-logo h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 2.4rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+  }
+
+  .auth-logo p {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  .auth-tabs {
+    display: flex;
+    margin-bottom: 28px;
+    border-bottom: 1px solid var(--border);
+    gap: 4px;
+  }
+
+  .auth-tab {
+    flex: 1;
+    padding: 10px;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.18s;
+  }
+
+  .auth-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .auth-form { display: flex; flex-direction: column; gap: 12px; }
+
+  .auth-form input {
+    width: 100%;
+    padding: 11px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .auth-form input::placeholder { color: var(--muted); }
+  .auth-form input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,229,122,0.08); }
+
+  .auth-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.82rem;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .auth-checkbox input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin-top: 2px;
+    flex-shrink: 0;
+    accent-color: var(--accent);
+    border-radius: 4px;
+  }
+
+  .auth-checkbox a { color: var(--accent); text-decoration: none; border-bottom: 1px solid rgba(0,229,122,0.3); }
+  .auth-checkbox a:hover { border-bottom-color: var(--accent); }
+
+  .auth-btn {
+    padding: 12px;
+    background: var(--accent);
+    color: #030a06;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.18s;
+    margin-top: 4px;
+  }
+
+  .auth-btn:hover { background: #00f285; box-shadow: 0 4px 16px rgba(0,229,122,0.25); transform: translateY(-1px); }
+
+  .auth-message {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.8rem;
+    text-align: center;
+    padding: 10px;
+    border-radius: 3px;
+    display: none;
+  }
+
+  .auth-message.success { background: rgba(0,255,136,0.08); color: var(--accent); border: 1px solid rgba(0,255,136,0.2); }
+  .auth-message.error { background: rgba(255,77,109,0.08); color: var(--danger); border: 1px solid rgba(255,77,109,0.2); }
+
+  /* ─── APP LAYOUT ─── */
+  #app-screen { display: none; min-height: 100vh; width: 100%; }
+  #app-screen.active { display: block; }
+
+  .app-layout {
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* ─── SIDEBAR ─── */
+  .sidebar {
+    width: var(--sidebar-w);
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    transition: transform 0.3s ease;
+    z-index: 100;
+  }
+
+  .sidebar-header {
+    padding: 22px 20px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-logo {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+  }
+
+  .sidebar-logo span {
+    display: block;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.62rem;
+    font-weight: 400;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    margin-top: 3px;
+    text-transform: uppercase;
+  }
+
+  .sidebar-user {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .user-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-size: 0.85rem;
+    color: #000;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .user-info { flex: 1; min-width: 0; }
+  .user-email {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sidebar-section-label {
+    padding: 16px 20px 6px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .sidebar-new-btn {
+    margin: 4px 12px 8px;
+    padding: 10px 16px;
+    background: var(--accent-dim);
+    border: 1px solid rgba(0,229,122,0.2);
+    border-radius: var(--radius-sm);
+    color: var(--accent);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.18s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .sidebar-new-btn:hover { background: rgba(0,255,136,0.15); }
+
+  .report-log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 0;
+  }
+
+  .report-log::-webkit-scrollbar { width: 4px; }
+  .report-log::-webkit-scrollbar-track { background: transparent; }
+  .report-log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .report-log-delete {
+    background: transparent;
+    border: 1px solid rgba(255,59,48,0.3);
+    color: var(--danger);
+    font-size: 0.6rem;
+    cursor: pointer;
+    padding: 2px 7px;
+    border-radius: 2px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.05em;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+
+  .report-log-delete:hover {
+    background: rgba(255,59,48,0.1);
+    border-color: var(--danger);
+  }
+
+  .report-log-item {
+    padding: 10px 14px;
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    transition: all 0.15s;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .report-log-item:hover { background: var(--surface2); border-left-color: var(--border-light); }
+  .report-log-item.active { background: var(--surface2); border-left-color: var(--accent); }
+
+  .report-log-category {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 3px;
+  }
+
+  .report-log-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .report-log-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .report-log-date {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.68rem;
+    color: var(--muted);
+  }
+
+  .report-log-empty {
+    padding: 24px 20px;
+    text-align: center;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+
+  .sidebar-footer {
+    padding: 14px 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: auto;
+    position: sticky;
+    bottom: 0;
+    background: var(--surface);
+  }
+
+  .sidebar-footer-links {
+    display: flex;
+    gap: 14px;
+  }
+
+  .sidebar-footer-links a {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .sidebar-footer-links a:hover { color: var(--text); }
+
+  .signout-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 8px 14px;
+    border-radius: var(--radius-sm);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.18s;
+    width: 100%;
+  }
+
+  .signout-btn:hover { border-color: rgba(248,113,113,0.4); color: var(--danger); background: rgba(248,113,113,0.05); }
+
+  /* ─── MAIN CONTENT ─── */
+  .main-content {
+    margin-left: var(--sidebar-w);
+    flex: 1;
+    min-height: 100vh;
+    position: relative;
+  }
+
+  .main-content::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .main-inner {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 32px 80px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Mobile toggle */
+  .sidebar-toggle {
+    display: none;
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 200;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--accent);
+    padding: 8px 12px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+  }
+
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 99;
+  }
+
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay.open { display: block; }
+    .sidebar-toggle { display: block; }
+    .main-content { margin-left: 0; }
+    .main-inner { padding: 60px 16px 80px; }
+  }
+
+  /* ─── CARDS ─── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 28px 32px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+    animation: fadeUp 0.4s ease both;
+    box-shadow: var(--shadow-sm);
+    transition: border-color 0.2s;
+  }
+
+  .card:hover { border-color: var(--border-light); }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 32px; right: 32px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.25;
+  }
+
+  .card-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 22px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .card-title::after { content: ''; flex: 1; height: 1px; background: var(--border); opacity: 0.6; }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  @media (max-width: 520px) { .form-row { grid-template-columns: 1fr; } }
+
+  input, textarea {
+    width: 100%;
+    padding: 11px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+
+  input::placeholder, textarea::placeholder { color: var(--muted); font-size: 0.875rem; }
+  input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,229,122,0.08); }
+  textarea { resize: vertical; min-height: 120px; margin-bottom: 12px; line-height: 1.6; }
+
+  .btn {
+    padding: 11px 22px;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+
+  .btn-primary { background: var(--accent); color: #030a06; width: 100%; }
+  .btn-primary:hover { background: #00f285; box-shadow: 0 4px 16px rgba(0,229,122,0.25); transform: translateY(-1px); }
+
+  .btn-row { display: flex; gap: 10px; margin-bottom: 20px; }
+
+  .btn-secondary { flex: 1; background: transparent; color: var(--accent2); border: 1px solid rgba(56,189,248,0.3); border-radius: var(--radius-sm); }
+  .btn-secondary:hover { background: var(--accent2-dim); border-color: var(--accent2); }
+
+  .btn-ghost { flex: 1; background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+  .btn-ghost:hover { border-color: var(--danger); color: var(--danger); }
+
+  #status-bar {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--muted);
+    transition: all 0.3s;
+  }
+
+  #status-bar.success { border-color: rgba(0,229,122,0.4); color: var(--accent); background: rgba(0,229,122,0.05); }
+  #status-bar.error { border-color: rgba(248,113,113,0.4); color: var(--danger); background: rgba(248,113,113,0.05); }
+  #status-bar.loading { border-color: rgba(56,189,248,0.4); color: var(--accent2); background: rgba(56,189,248,0.05); }
+
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+  .loading .status-dot { animation: pulse 1s infinite; }
+
+  /* ─── SECTION 1 ─── */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .stat-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 16px;
+    text-align: center;
+    overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+
+  .stat-box:hover { border-color: var(--border-light); transform: translateY(-1px); }
+
+  .stat-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.68rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .stat-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  .stat-value.blue { color: var(--accent2); }
+
+  .contrib-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  .contrib-box { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; }
+
+  .analysis-source {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.75rem;
+    color: var(--muted);
+    padding: 12px 0 0;
+    border-top: 1px solid var(--border);
+    margin-top: 16px;
+  }
+
+  /* ─── SECTION 2 ─── */
+  .chat-recap { font-size: 0.95rem; line-height: 1.85; color: var(--text-secondary); font-weight: 400; }
+
+  /* ─── SECTION 3 ─── */
+  .action-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    margin-bottom: 12px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .action-item:hover { border-color: var(--border-light); box-shadow: var(--shadow-sm); }
+  .action-item.status-Complete { border-left: 3px solid var(--accent); }
+  .action-item.status-In-Progress { border-left: 3px solid var(--yellow); }
+  .action-item.status-Planned { border-left: 3px solid var(--danger); }
+
+  .action-main {
+    display: grid;
+    grid-template-columns: 14px minmax(0, 1fr) auto;
+    gap: 16px;
+    align-items: start;
+    margin-bottom: 14px;
+  }
+
+  .action-main-top { display: contents; }
+
+  .action-light { width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+  .light-Complete { background: var(--accent); box-shadow: 0 0 8px rgba(0,229,122,0.5); }
+  .light-In-Progress { background: var(--yellow); box-shadow: 0 0 8px rgba(251,191,36,0.5); }
+  .light-Planned { background: var(--danger); box-shadow: 0 0 8px rgba(248,113,113,0.5); }
+
+  .action-text { font-size: 0.92rem; font-weight: 500; line-height: 1.5; overflow-wrap: break-word; word-break: break-word; color: var(--text); }
+  .action-rationale { font-size: 0.8rem; color: var(--muted); margin-top: 5px; line-height: 1.5; overflow-wrap: break-word; word-break: break-word; }
+
+  .action-metrics-block { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; margin-left: auto; text-align: right; }
+  .action-metrics-row { display: flex; gap: 14px; align-items: baseline; }
+  .action-hours { font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; color: var(--accent2); font-weight: 500; text-align: right; }
+  .action-value { font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; color: var(--accent); font-weight: 500; text-align: right; }
+
+  .status-toggle { display: flex; gap: 6px; flex-shrink: 0; justify-content: flex-end; flex-wrap: wrap; }
+
+  .status-btn {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    transition: all 0.18s;
+    white-space: nowrap;
+    letter-spacing: 0.01em;
+  }
+
+  .status-btn:hover { color: var(--text); border-color: var(--border-light); }
+  .status-btn.active-Complete { background: rgba(0,229,122,0.1); color: var(--accent); border-color: rgba(0,229,122,0.3); }
+  .status-btn.active-In-Progress { background: rgba(251,191,36,0.1); color: var(--yellow); border-color: rgba(251,191,36,0.3); }
+  .status-btn.active-Planned { background: rgba(248,113,113,0.1); color: var(--danger); border-color: rgba(248,113,113,0.3); }
+
+  .action-notes-row { padding-top: 12px; border-top: 1px solid var(--border); margin-top: 4px; }
+
+  .notes-field {
+    width: 100%;
+    padding: 8px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    resize: none;
+    height: 36px;
+    overflow: hidden;
+    transition: border-color 0.2s, height 0.2s;
+    outline: none;
+    display: block;
+  }
+
+  .notes-field::placeholder { color: var(--muted); font-size: 0.82rem; }
+  .notes-field:focus { border-color: var(--accent2); height: 72px; }
+
+  /* Mobile action layout */
+  @media (max-width: 600px) {
+    .action-main { display: flex; flex-direction: column; gap: 10px; }
+    .action-main-top { display: flex; gap: 10px; align-items: flex-start; }
+    .action-metrics-block { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; margin-left: 0; text-align: left; width: 100%; }
+    .action-metrics-row { display: flex; gap: 16px; align-items: baseline; width: 100%; }
+    .status-toggle { justify-content: flex-start; flex-wrap: wrap; width: 100%; }
+  }
+
+  .report-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent2);
+    border-radius: 3px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+
+  .report-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .report-name { font-weight: 700; font-size: 1rem; }
+  .report-dept { font-size: 0.75rem; color: var(--accent2); font-family: 'JetBrains Mono', monospace; }
+  .report-preview { font-size: 0.85rem; color: var(--muted); line-height: 1.5; }
+
+  /* ─── SHARE LINK ─── */
+  .share-link-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .share-link-input {
+    flex: 1;
+    padding: 10px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .share-link-input::placeholder { color: var(--muted); font-size: 0.85rem; }
+  .share-link-input:focus { border-color: var(--accent2); }
+
+  .share-link-btn {
+    padding: 10px 18px;
+    background: var(--accent2);
+    color: #000;
+    border: none;
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    font-weight: 700;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .share-link-btn:hover { background: #00a8cc; }
+  .share-link-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .share-link-status {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    min-height: 16px;
+    margin-bottom: 10px;
+    letter-spacing: 0.05em;
+  }
+
+  .share-link-status.success { color: var(--accent); }
+  .share-link-status.error { color: var(--danger); }
+  .share-link-status.loading { color: var(--accent2); }
+
+  /* ─── JSON PICKER ─── */
+  .json-picker {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+
+  .json-picker-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    color: var(--accent2);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  /* ─── YEARLY PROJECTION ─── */
+  .yearly-row {
+    display: grid;
+    grid-template-columns: 60px 100px 1fr;
+    gap: 12px;
+    align-items: baseline;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .yearly-row:last-child { border-bottom: none; }
+
+  .yearly-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .yearly-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--accent);
+  }
+
+  .yearly-desc {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  .analogue-item {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    padding: 4px 0;
+    border-left: 2px solid var(--border-light);
+    padding-left: 10px;
+    margin-bottom: 6px;
+  }
+
+  .driver-tag {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--accent2);
+    background: var(--accent2-dim);
+    border: 1px solid rgba(56,189,248,0.2);
+    border-radius: 20px;
+    padding: 3px 10px;
+    white-space: nowrap;
+  }
+
+  .user-plan {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 20px;
+    display: inline-block;
+    margin-top: 3px;
+  }
+
+  .user-plan.free { background: rgba(100,116,139,0.15); color: var(--muted); border: 1px solid rgba(100,116,139,0.2); }
+  .user-plan.pro { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(0,229,122,0.25); }
+
+  .upgrade-banner {
+    margin: 10px 14px;
+    padding: 10px 12px;
+    background: rgba(0,255,136,0.04);
+    border: 1px solid rgba(0,255,136,0.15);
+    border-radius: 3px;
+  }
+
+  .upgrade-banner-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    margin-bottom: 8px;
+    line-height: 1.5;
+  }
+
+  .upgrade-banner-btn {
+    width: 100%;
+    padding: 8px;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 2px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .upgrade-banner-btn:hover { background: #00cc6a; }
+
+  .history-lock {
+    display: none;
+    text-align: center;
+    padding: 20px 14px;
+    color: var(--muted);
+  }
+
+  .history-lock-icon { font-size: 1.4rem; margin-bottom: 8px; }
+
+  .history-lock-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+
+  .history-lock-btn {
+    padding: 7px 14px;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    border-radius: 2px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .history-lock-btn:hover { background: rgba(0,255,136,0.08); }
+
+  /* Hide upgrade banner for pro users */
+  .is-pro #upgrade-banner { display: none; }
+  .is-pro #history-lock { display: none !important; }
+  .is-pro #report-log-section { display: block !important; }
+
+  /* ─── EXPORT LOCK ─── */
+  .export-lock-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    margin-bottom: 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .export-lock-btn {
+    padding: 7px 14px;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    border-radius: 2px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .export-lock-btn:hover { background: rgba(0,255,136,0.08); }
+
+  /* ─── SHARE COMING SOON ─── */
+  .share-coming-soon {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: rgba(0,200,255,0.04);
+    border: 1px solid rgba(0,200,255,0.15);
+    border-radius: 3px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  .share-coming-icon { font-size: 0.9rem; }
+
+  .share-coming-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    flex: 1;
+  }
+
+  .share-coming-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    color: var(--accent2);
+    border: 1px solid rgba(0,200,255,0.3);
+    padding: 2px 8px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  /* ─── FILE UPLOAD ─── */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 4px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 12px;
+    background: var(--surface2);
+    position: relative;
+  }
+
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(0,255,136,0.04);
+  }
+
+  .upload-zone.success {
+    border-color: var(--accent);
+    border-style: solid;
+    background: rgba(0,255,136,0.06);
+  }
+
+  .upload-zone.error {
+    border-color: var(--danger);
+    border-style: solid;
+  }
+
+  .upload-icon { font-size: 1.4rem; margin-bottom: 6px; }
+
+  .upload-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+  }
+
+  .upload-link { color: var(--accent); text-decoration: underline; }
+
+  .upload-formats {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    opacity: 0.6;
+  }
+
+  .upload-status {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    margin-top: 8px;
+    min-height: 18px;
+    letter-spacing: 0.05em;
+  }
+
+  .upload-zone.success .upload-status { color: var(--accent); }
+  .upload-zone.error .upload-status { color: var(--danger); }
+  .innovation-card { position: relative; }
+
+  .innovation-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .innovation-score-display {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .innovation-score-number {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 3rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .innovation-score-denom {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    color: var(--muted);
+  }
+
+  .innovation-label {
+    display: inline-block;
+    padding: 4px 14px;
+    border-radius: 2px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+
+  .label-Exceptional { background: rgba(0,255,136,0.12); color: var(--accent); border: 1px solid rgba(0,255,136,0.3); }
+  .label-High { background: rgba(0,200,255,0.1); color: var(--accent2); border: 1px solid rgba(0,200,255,0.3); }
+  .label-Moderate { background: rgba(240,180,41,0.1); color: var(--yellow); border: 1px solid rgba(240,180,41,0.3); }
+  .label-Standard { background: rgba(255,255,255,0.05); color: var(--muted); border: 1px solid var(--border); }
+
+  .innovation-dimensions { display: flex; flex-direction: column; gap: 16px; }
+
+  .innovation-dim {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .innovation-dim-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .innovation-dim-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    color: var(--text);
+    text-transform: uppercase;
+  }
+
+  .innovation-dim-score {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+
+  .innovation-bar-track {
+    height: 6px;
+    background: var(--surface2);
+    border-radius: 3px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+
+  .innovation-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 1s ease;
+  }
+
+  .bar-novelty { background: linear-gradient(90deg, var(--accent), #00cc6a); box-shadow: 0 0 8px rgba(0,255,136,0.4); }
+  .bar-impact { background: linear-gradient(90deg, var(--accent2), #0099cc); box-shadow: 0 0 8px rgba(0,200,255,0.4); }
+  .bar-synergy { background: linear-gradient(90deg, #a855f7, #7c3aed); box-shadow: 0 0 8px rgba(168,85,247,0.4); }
+
+  .innovation-evidence {
+    font-size: 0.82rem;
+    color: var(--muted);
+    line-height: 1.5;
+    font-style: italic;
+  }
+
+  .innovation-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 0;
+  }
+  .task-overrides {
+    display: flex;
+    gap: 10px;
+    padding: 10px 0 8px;
+    flex-wrap: wrap;
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+  }
+
+  .task-override-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 100px;
+  }
+
+  .task-override-field label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .task-select {
+    padding: 6px 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+
+  .task-select:focus { border-color: var(--accent2); }
+
+  .task-number {
+    padding: 6px 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+
+  .task-number:focus { border-color: var(--accent2); }
+
+  /* ─── VALUE CALCULATOR ─── */
+
+  .calc-section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.25em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    margin-top: 16px;
+  }
+
+  .calc-section-label:first-child { margin-top: 0; }
+
+  .role-toggles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .role-btn {
+    padding: 6px 12px;
+    border-radius: 2px;
+    font-size: 0.72rem;
+    font-family: 'JetBrains Mono', monospace;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+
+  .role-btn:hover { border-color: var(--muted); color: var(--text); }
+  .role-btn.active { background: rgba(0,255,136,0.1); color: var(--accent); border-color: var(--accent); }
+
+  .calc-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  @media (max-width: 520px) { .calc-row { grid-template-columns: 1fr; } }
+
+  .calc-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .calc-field label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .calc-field input[type="number"] {
+    padding: 10px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+
+  .calc-field input[type="number"]:focus { border-color: var(--accent); }
+
+  .calc-field input[type="range"] {
+    width: 100%;
+    accent-color: var(--accent);
+    height: 4px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .calc-range-row {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .calc-result {
+    background: var(--surface);
+    border: 1px solid rgba(0,255,136,0.2);
+    border-radius: 3px;
+    padding: 16px;
+    margin-top: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .calc-result-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .calc-result-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(0,255,136,0.3);
+  }
+
+  .calc-formula {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .calc-pro-teaser {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: rgba(0,200,255,0.05);
+    border: 1px solid rgba(0,200,255,0.15);
+    border-radius: 3px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .calc-pro-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--accent2);
+    letter-spacing: 0.05em;
+  }
+
+  .calc-pro-btn {
+    padding: 6px 14px;
+    background: transparent;
+    border: 1px solid var(--accent2);
+    color: var(--accent2);
+    border-radius: 2px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .calc-pro-btn:hover { background: rgba(0,200,255,0.1); }
+
+  .info-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 1px solid var(--muted);
+    color: var(--muted);
+    font-size: 0.6rem;
+    cursor: pointer;
+    margin-left: 6px;
+    font-family: serif;
+    font-style: italic;
+    transition: all 0.2s;
+  }
+
+  .info-icon:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Formula Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 500;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 32px;
+    max-width: 480px;
+    width: 90%;
+    position: relative;
+    animation: fadeUp 0.3s ease both;
+  }
+
+  .modal::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+  }
+
+  .modal-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  .modal-body {
+    font-size: 0.88rem;
+    line-height: 1.8;
+    color: var(--muted);
+  }
+
+  .modal-body strong { color: var(--text); }
+
+  .modal-formula {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 14px;
+    margin: 16px 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent);
+    line-height: 1.8;
+  }
+
+  .modal-close {
+    margin-top: 20px;
+    padding: 10px 20px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    cursor: pointer;
+    letter-spacing: 0.1em;
+    transition: all 0.2s;
+  }
+
+  .modal-close:hover { border-color: var(--accent); color: var(--accent); }
+
+  @media print {
+    .sidebar, .btn-row, #status-bar, #export-row, .card:first-of-type, #reports, .sidebar-toggle { display: none !important; }
+    .main-content { margin-left: 0 !important; }
+    body { background: white !important; color: black !important; }
+    body::before { display: none; }
+    .card { border: 1px solid #ccc !important; background: white !important; break-inside: avoid; }
+    .stat-box, .contrib-box { border: 1px solid #ccc !important; background: #f9f9f9 !important; }
+    .action-item { border: 1px solid #ccc !important; background: #f9f9f9 !important; break-inside: avoid; }
+    h1, .card-title { color: #000 !important; text-shadow: none !important; }
+    .stat-value, .stat-label, .action-text { color: #000 !important; }
+    .stat-value.blue, .action-rationale, .action-hours, .action-value { color: #333 !important; }
+  }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+</style>
+</head>
+<body>
+
+<!-- ─── AUTH SCREEN ─── -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <h1>VOSS</h1>
+      <p>Virtual Operating System Synopsis</p>
+    </div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('login')">Sign In</button>
+      <button class="auth-tab" onclick="switchAuthTab('signup')">Create Account</button>
+    </div>
+
+    <!-- Login Form -->
+    <div id="login-form" class="auth-form">
+      <input type="email" id="login-email" placeholder="Email address" />
+      <input type="password" id="login-password" placeholder="Password" />
+      <div id="login-message" class="auth-message"></div>
+      <button class="auth-btn" onclick="handleLogin()">⚡ Sign In</button>
+      <button onclick="handleForgotPassword()" style="background:transparent;border:none;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:0.72rem;cursor:pointer;letter-spacing:0.05em;text-align:center;margin-top:4px;" type="button">Forgot password?</button>
+    </div>
+
+    <!-- Signup Form -->
+    <div id="signup-form" class="auth-form" style="display:none;">
+      <input type="text" id="signup-name" placeholder="Full name" />
+      <input type="email" id="signup-email" placeholder="Email address" />
+      <input type="password" id="signup-password" placeholder="Password (min 8 characters)" />
+      <label class="auth-checkbox">
+        <input type="checkbox" id="terms-checkbox" />
+        <span>I agree to the <a href="https://vossintel.com/terms.html" target="_blank">Terms of Service</a> and <a href="https://vossintel.com/privacy.html" target="_blank">Privacy Policy</a></span>
+      </label>
+      <label class="auth-checkbox">
+        <input type="checkbox" id="email-opt-in-checkbox" checked />
+        <span>I'd like to receive product updates and news from VOSS Intel</span>
+      </label>
+      <div id="signup-message" class="auth-message"></div>
+      <button class="auth-btn" onclick="handleSignup()">Create Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── APP SCREEN ─── -->
+<div id="app-screen">
+  <button class="sidebar-toggle" onclick="toggleSidebar()">☰ VOSS</button>
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+  <div class="app-layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">
+          VOSS INTEL
+          <span>Virtual Operating System Synopsis</span>
+        </div>
+      </div>
+
+      <div class="sidebar-user">
+        <div class="user-avatar" id="user-avatar">—</div>
+        <div class="user-info">
+          <div class="user-email" id="user-email">—</div>
+          <div class="user-plan free" id="user-plan-badge">FREE PLAN</div>
+        </div>
+      </div>
+
+      <div class="sidebar-section-label">// Actions</div>
+      <button class="sidebar-new-btn" onclick="newReport()">⚡ New Report</button>
+
+      <div id="upgrade-banner" class="upgrade-banner">
+        <div class="upgrade-banner-text">⚡ Unlock unlimited reports, history & exports</div>
+        <button class="upgrade-banner-btn" onclick="window.open(UPGRADE_URL,'_blank')">Upgrade to Pro — $19.99/mo</button>
+      </div>
+
+      <div class="sidebar-section-label">// Report History</div>
+      <div id="history-lock" class="history-lock" style="display:block;">
+        <div class="history-lock-icon">🔒</div>
+        <div class="history-lock-text">Report history is a Pro feature</div>
+        <button class="history-lock-btn" onclick="showUpgradePrompt()">Upgrade to Pro</button>
+      </div>
+      <div id="report-log-section" style="display:none;">
+        <div class="report-log" id="report-log">
+          <div class="report-log-empty">[ NO REPORTS YET ]<br>Submit your first report<br>to begin tracking value</div>
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-footer-links">
+          <a href="https://vossintel.com/terms.html" target="_blank">Terms</a>
+          <a href="https://vossintel.com/privacy.html" target="_blank">Privacy</a>
+          <a href="mailto:service@vossintel.com">Contact</a>
+        </div>
+        <button class="signout-btn" onclick="
+          Object.keys(localStorage).forEach(k => { if(k.includes('supabase') || k.includes('sb-')) localStorage.removeItem(k); });
+          Object.keys(sessionStorage).forEach(k => { if(k.includes('supabase') || k.includes('sb-')) sessionStorage.removeItem(k); });
+          window.location.reload();
+        ">↩ Sign Out</button>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main-content">
+      <div class="main-inner">
+
+        <!-- Submit Report -->
+        <div class="card">
+          <div class="card-title">Submit Report</div>
+          <form id="reportForm">
+            <div class="form-row">
+              <input type="text" id="rep-name" placeholder="Name" required>
+              <input type="text" id="rep-department" placeholder="Department — Position">
+            </div>
+
+            <!-- Share Link Input -->
+            <div class="share-coming-soon">
+              <span class="share-coming-icon">🔗</span>
+              <span class="share-coming-text">Share link import — coming with the VOSS Browser Extension</span>
+              <span class="share-coming-badge">Soon</span>
+            </div>
+
+            <!-- File Upload Zone -->
+            <div class="upload-zone" id="upload-zone"
+              ondragover="handleDragOver(event)"
+              ondragleave="handleDragLeave(event)"
+              ondrop="handleDrop(event)"
+              onclick="document.getElementById('file-input').click()">
+              <div class="upload-icon">⬇️</div>
+              <div class="upload-text">Drop file here or <span class="upload-link">browse</span></div>
+              <div class="upload-formats">PDF · TXT · MD · JSON · HTML</div>
+              <div class="upload-status" id="upload-status"></div>
+            </div>
+            <input type="file" id="file-input" accept=".pdf,.txt,.md,.json,.html"
+              style="display:none" onchange="handleFileSelect(event)">
+
+            <!-- JSON Conversation Picker (shows when multi-chat JSON detected) -->
+            <div id="json-picker" style="display:none;" class="json-picker">
+              <div class="json-picker-label">// Select conversation to analyze</div>
+              <select id="json-conversation-select" class="task-select" style="width:100%;margin-bottom:10px;">
+              </select>
+              <button type="button" class="btn btn-secondary" style="width:100%;" onclick="loadSelectedConversation()">Load Selected Conversation</button>
+            </div>
+
+            <textarea id="rep-issue" placeholder="Paste chat transcript here, upload a file, or use a share link above..." required></textarea>
+            <button type="submit" class="btn btn-primary">Submit Report</button>
+          </form>
+        </div>
+
+        <!-- Actions -->
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="generateAiReport()">⚡ VOSS Value Report</button>
+          <button class="btn btn-ghost" onclick="clearSession()">✕ Clear Session</button>
+        </div>
+
+        <!-- Status -->
+        <div id="status-bar">
+          <div class="status-dot"></div>
+          <span id="status-text">System ready — submit a report to begin</span>
+        </div>
+
+        <!-- Section 1 -->
+        <div id="section-summary" class="card" style="display:none;">
+          <div class="card-title">Section 1 — Time & Value Summary</div>
+          <div class="summary-grid">
+            <div class="stat-box"><div class="stat-label">Hours Saved</div><div class="stat-value" id="out-hours">—</div></div>
+            <div class="stat-box"><div class="stat-label">Chat Value</div><div class="stat-value blue" id="out-cost">—</div></div>
+            <div class="stat-box"><div class="stat-label">Projected Business Value</div><div class="stat-value" id="out-projected">—</div><div style="font-family:'JetBrains Mono',monospace;font-size:0.6rem;color:var(--muted);margin-top:6px;line-height:1.5;" id="out-projected-breakdown"></div></div>
+            <div class="stat-box"><div class="stat-label">Category</div><div class="stat-value blue" style="font-size:0.85rem;" id="out-category">—</div></div>
+          </div>
+          <div class="contrib-row">
+            <div class="contrib-box"><div class="stat-label">AI Contribution</div><div class="stat-value" id="out-ai">—</div></div>
+            <div class="contrib-box"><div class="stat-label">Human Contribution</div><div class="stat-value blue" id="out-human">—</div></div>
+          </div>
+          <div class="analysis-source" id="out-source"></div>
+
+          <!-- Yearly Projection -->
+          <div id="out-yearly-projection" style="display:none; margin-top:16px;"></div>
+
+          <!-- Analogues -->
+          <div id="out-analogues" style="display:none; margin-top:12px;"></div>
+
+          <!-- Main Drivers -->
+          <div id="out-drivers" style="display:none; margin-top:12px; flex-wrap:wrap; gap:6px;"></div>
+        </div>
+
+        <!-- Section 1B: Implementation Cost Calculator (collapsible) -->
+        <div id="section-calculator" class="card" style="display:none;">
+          <div class="card-title" style="cursor:pointer;" onclick="toggleCalc()">
+            Section 1B — Implementation Cost Calculator
+            <span id="calc-arrow" style="margin-left:auto;font-size:0.7rem;transition:transform 0.3s;">▼</span>
+          </div>
+
+          <div id="calc-body">
+            <div class="calc-section-label">// Pay Rate — drag to set hourly rate</div>
+            <div class="calc-field" style="margin-bottom:8px;">
+              <label>Hourly Rate — <span id="rate-label">$65/hr (Mid-level)</span></label>
+              <input type="range" id="calc-rate-slider" min="10" max="200" step="1" value="65"
+                oninput="updateRateLabel(); recalculate()">
+              <div class="calc-range-row">
+                <span>$10 Min Wage</span>
+                <span>$65 Mid</span>
+                <span>$200 Executive</span>
+              </div>
+            </div>
+
+            <div class="calc-row">
+              <div class="calc-field">
+                <label>Custom Rate ($) — override slider</label>
+                <input type="number" id="calc-rate" value="65" min="10" max="500" oninput="syncRateFromInput(); recalculate()">
+              </div>
+              <div class="calc-field">
+                <label>Default Headcount</label>
+                <input type="number" id="calc-headcount" value="1" min="1" max="50" oninput="recalculate()">
+              </div>
+            </div>
+
+            <div class="calc-field" style="margin-bottom:16px;">
+              <label>Industry Multiplier — <span id="mult-label">General (1.0x)</span></label>
+              <input type="range" id="calc-multiplier" min="0.5" max="2.0" step="0.1" value="1.0"
+                oninput="updateMultiplierLabel(); recalculate()">
+              <div class="calc-range-row">
+                <span>0.5x Low</span>
+                <span>1.0x General</span>
+                <span>2.0x High</span>
+              </div>
+            </div>
+
+            <div class="calc-result">
+              <div>
+                <div class="calc-result-label">Estimated Implementation Cost</div>
+                <div class="calc-result-value" id="calc-output">$0</div>
+              </div>
+              <div class="calc-formula" id="calc-formula-display">
+                Σ tasks × rate × headcount × multiplier
+              </div>
+            </div>
+
+            <div class="calc-pro-teaser">
+              <div class="calc-pro-text">🔒 Pro — Save rate presets, team templates, time horizon modeling</div>
+              <button class="calc-pro-btn" onclick="alert('Pro plan coming soon!')">Upgrade to Pro</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Formula Modal -->
+        <div class="modal-overlay" id="formula-modal">
+          <div class="modal">
+            <div class="modal-title">// How We Calculate</div>
+            <div class="modal-body">
+              <p>VOSS tracks three distinct financial metrics:</p>
+              <div class="modal-formula">
+                Chat Value =<br>
+                &nbsp;&nbsp;Hours Saved × $65/hr × AI Contribution %<br><br>
+                Implementation Cost =<br>
+                &nbsp;&nbsp;Σ (Hours to Complete × Role Rate × Headcount)<br>
+                &nbsp;&nbsp;× Industry Multiplier<br><br>
+                Projected Business Value =<br>
+                &nbsp;&nbsp;AI estimate of business ROI when tasks complete
+              </div>
+              <p><strong>Chat Value</strong> — what this AI session saved in time and money.</p>
+              <p style="margin-top:8px;"><strong>Implementation Cost</strong> — realistic labor cost to complete all planned tasks. Adjust role, headcount, and hours per task.</p>
+              <p style="margin-top:8px;"><strong>Projected Business Value</strong> — estimated economic value the business gains when these tasks are completed. Based on impact type and industry multipliers.</p>
+              <p style="margin-top:8px;"><strong>Industry Multiplier</strong> — scales implementation cost estimate based on your industry's labor market.</p>
+            </div>
+            <button class="modal-close" onclick="closeFormulaModal()">✕ Close</button>
+          </div>
+        </div>
+
+        <!-- Section 2 -->
+        <div id="section-recap" class="card" style="display:none;">
+          <div class="card-title">Section 2 — Chat Summary</div>
+          <p class="chat-recap" id="out-recap"></p>
+        </div>
+
+        <!-- Section 2C: Hybrid Innovation Score -->
+        <div id="section-innovation" class="card innovation-card" style="display:none;">
+          <div class="card-title">Section 2C — Hybrid Innovation Score</div>
+          <div class="innovation-header">
+            <div class="innovation-score-display">
+              <div class="innovation-score-number" id="innov-score">—</div>
+              <div class="innovation-score-denom">/100</div>
+            </div>
+            <div class="innovation-label" id="innov-label">—</div>
+          </div>
+          <div class="innovation-dimensions">
+            <div class="innovation-dim">
+              <div class="innovation-dim-header">
+                <span class="innovation-dim-label">⚡ Novelty</span>
+                <span class="innovation-dim-score" id="innov-novelty-score">—</span>
+              </div>
+              <div class="innovation-bar-track">
+                <div class="innovation-bar-fill bar-novelty" id="innov-novelty-bar" style="width:0%"></div>
+              </div>
+              <div class="innovation-evidence" id="innov-novelty-evidence">—</div>
+            </div>
+            <div class="innovation-divider"></div>
+            <div class="innovation-dim">
+              <div class="innovation-dim-header">
+                <span class="innovation-dim-label">🎯 Impact Potential</span>
+                <span class="innovation-dim-score" id="innov-impact-score">—</span>
+              </div>
+              <div class="innovation-bar-track">
+                <div class="innovation-bar-fill bar-impact" id="innov-impact-bar" style="width:0%"></div>
+              </div>
+              <div class="innovation-evidence" id="innov-impact-evidence">—</div>
+            </div>
+            <div class="innovation-divider"></div>
+            <div class="innovation-dim">
+              <div class="innovation-dim-header">
+                <span class="innovation-dim-label">🔗 Hybrid Synergy</span>
+                <span class="innovation-dim-score" id="innov-synergy-score">—</span>
+              </div>
+              <div class="innovation-bar-track">
+                <div class="innovation-bar-fill bar-synergy" id="innov-synergy-bar" style="width:0%"></div>
+              </div>
+              <div class="innovation-evidence" id="innov-synergy-evidence">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 3 -->
+        <div id="section-actions" class="card" style="display:none;">
+          <div class="card-title">Section 3 — Action Priority List</div>
+          <div class="action-table-header">
+            <div class="action-col-label"></div>
+            <div class="action-col-label">Task / Action</div>
+            <div class="action-col-label" style="text-align:right;">Hrs Saved / Projected Value</div>
+          </div>
+          <div id="out-actions"></div>
+        </div>
+
+        <!-- Export -->
+        <div id="export-row" class="btn-row" style="display:none;">
+          <button class="btn btn-secondary" id="export-pdf-btn" onclick="exportPDF()">📄 Export PDF</button>
+          <button class="btn btn-secondary" onclick="shareReport()">📧 Share via Email</button>
+        </div>
+        <!-- Export lock for free users -->
+        <div id="export-lock" class="export-lock-bar" style="display:none;">
+          <span>📄 Export PDF & Share</span>
+          <button class="export-lock-btn" onclick="showUpgradePrompt()">🔒 Pro Feature — Upgrade</button>
+        </div>
+
+        <!-- Session Reports -->
+        <div class="card">
+          <div class="card-title">Session Reports</div>
+          <div id="reports"><div class="empty-state">[ NO REPORTS THIS SESSION ]</div></div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+</div>
+
+<footer style="text-align:center;padding:20px;font-family:'JetBrains Mono',monospace;font-size:0.68rem;color:#3d4550;letter-spacing:0.05em;line-height:1.6;background:var(--bg);position:relative;z-index:1;">
+  VOSS reports are generated by AI and may contain inaccuracies. Please review all outputs before making business decisions.
+  <br><br>
+  <a href="#" onclick="sb.auth.signOut().then(()=>window.location.reload());return false;" style="color:#3d4550;text-decoration:underline;cursor:pointer;">Sign Out</a>
+</footer>
+
+<script>
+  // ─── SUPABASE INIT ───
+  const { createClient } = supabase;
+  const sb = createClient(
+    'https://irgbgizvcxsdxosfjswk.supabase.co',
+    'sb_publishable_nnyhOAPaDpWZk_huoANqpA_Mpa3MPSR'
+  );
+
+  const WORKER_URL = "https://voss-reporting.eliasvoss77.workers.dev";
+  const API_KEY = "voss-dk7x-2f9m-q372";
+
+  let currentUser = null;
+  let sessionReports = [];
+  let actionNotes = {};
+  let currentReportData = null;
+
+  // ─── VALUE CALCULATOR ───
+  let calcRate = 65;
+  let calcAiPct = 1.0;
+  let rawActionItems = [];
+  let calcOpen = true;
+
+  const roleRates = { Junior: 35, Mid: 65, Senior: 95, Executive: 150 };
+
+  function toggleCalc() {
+    calcOpen = !calcOpen;
+    document.getElementById('calc-body').style.display = calcOpen ? 'block' : 'none';
+    document.getElementById('calc-arrow').style.transform = calcOpen ? 'rotate(0deg)' : 'rotate(-90deg)';
+  }
+
+  function updateRateLabel() {
+    const val = parseInt(document.getElementById('calc-rate-slider').value);
+    let label = `$${val}/hr`;
+    if (val <= 15) label = `$${val}/hr (Minimum Wage)`;
+    else if (val <= 20) label = `$${val}/hr (Entry Level)`;
+    else if (val <= 30) label = `$${val}/hr (Service Worker)`;
+    else if (val <= 50) label = `$${val}/hr (Skilled Trade)`;
+    else if (val <= 75) label = `$${val}/hr (Mid-Level Professional)`;
+    else if (val <= 100) label = `$${val}/hr (Senior Professional)`;
+    else if (val <= 150) label = `$${val}/hr (Manager / Specialist)`;
+    else label = `$${val}/hr (Executive / Director)`;
+    document.getElementById('rate-label').textContent = label;
+    document.getElementById('calc-rate').value = val;
+    calcRate = val; // sync global variable
+    recalculate(); // recalculate immediately
+  }
+
+  function syncRateFromInput() {
+    const val = parseInt(document.getElementById('calc-rate').value) || 65;
+    document.getElementById('calc-rate-slider').value = Math.min(val, 200);
+    calcRate = val;
+    updateRateLabel();
+  }
+
+  function updateMultiplierLabel() {
+    const val = parseFloat(document.getElementById('calc-multiplier').value);
+    let label = 'General (1.0x)';
+    if (val <= 0.6) label = 'Non-Profit / Low Margin (' + val + 'x)';
+    else if (val <= 0.8) label = 'Retail / Service (' + val + 'x)';
+    else if (val <= 1.0) label = 'General / Mixed (' + val + 'x)';
+    else if (val <= 1.2) label = 'Tech / SaaS (' + val + 'x)';
+    else if (val <= 1.5) label = 'Finance / Consulting (' + val + 'x)';
+    else label = 'High Value / Enterprise (' + val + 'x)';
+    document.getElementById('mult-label').textContent = label;
+  }
+
+  function getTaskRate(index) {
+    const el = document.getElementById('task-role-' + index);
+    if (el) return parseFloat(el.value) || calcRate;
+    return calcRate;
+  }
+
+  function getTaskHeadcount(index) {
+    const el = document.getElementById('task-headcount-' + index);
+    if (el) return parseFloat(el.value) || 1;
+    return parseFloat(document.getElementById('calc-headcount')?.value) || 1;
+  }
+
+  function getTaskHours(index) {
+    const el = document.getElementById('task-hours-' + index);
+    if (el) return parseFloat(el.value) || 0;
+    return rawActionItems[index]?.hoursToComplete || 0;
+  }
+
+  function recalculate() {
+    const multiplier = parseFloat(document.getElementById('calc-multiplier').value) || 1.0;
+    const rate = calcRate || parseFloat(document.getElementById('calc-rate').value) || 65;
+    const headcount = parseFloat(document.getElementById('calc-headcount')?.value) || 1;
+    let total = 0;
+
+    if (rawActionItems.length > 0) {
+      rawActionItems.forEach((a, i) => {
+        const r = getTaskRate(i);
+        const h = getTaskHeadcount(i);
+        const hrs = getTaskHours(i);
+        total += hrs * r * h;
+      });
+      total = total * multiplier;
     }
 
-    const url = new URL(request.url);
+    total = Math.round(total / 50) * 50;
+    document.getElementById('calc-output').textContent = '$' + total.toLocaleString();
+    document.getElementById('calc-formula-display').textContent =
+      `Σ tasks × $${rate}/hr × ${headcount} person(s) × ${multiplier}x`;
+  }
 
-    // LemonSqueezy webhook
-    if (request.method === 'POST' && url.pathname === '/ls-webhook') {
-      try {
-        const payload = await request.json();
-        const eventName = payload.meta?.event_name;
-        const userEmail = payload.data?.attributes?.user_email ||
-                          payload.meta?.custom_data?.email ||
-                          payload.data?.attributes?.customer_email;
-        const subscriptionId = payload.data?.id;
-        const status = payload.data?.attributes?.status;
+  function applyMultiplierToSection3() {
+    if (rawActionItems.length === 0) return;
+    rawActionItems.forEach((a, i) => updateTaskCost(i));
+    recalculate();
+  }
 
-        if (!userEmail) {
-          return new Response('No email in webhook', { status: 400, headers: corsHeaders });
-        }
+  function applyGlobalRateToSection3() {
+    // Sync global rate to all per-task sliders
+    if (rawActionItems.length === 0) return;
+    rawActionItems.forEach((a, i) => {
+      const taskSlider = document.getElementById('task-rate-slider-' + i);
+      const taskLabel = document.getElementById('task-rate-label-' + i);
+      if (taskSlider) taskSlider.value = calcRate;
+      if (taskLabel) taskLabel.textContent = `$${calcRate}/hr`;
+      updateTaskCost(i);
+    });
+    recalculate();
+  }
 
-        let plan = 'free';
-        let lsStatus = 'inactive';
+  function showFormulaModal() {
+    document.getElementById('formula-modal').classList.add('open');
+  }
 
-        if (['subscription_created', 'subscription_updated', 'subscription_resumed'].includes(eventName)) {
-          if (status === 'active') { plan = 'pro'; lsStatus = 'active'; }
-        } else if (['subscription_cancelled', 'subscription_expired', 'subscription_paused'].includes(eventName)) {
-          plan = 'free'; lsStatus = status;
-        }
+  function closeFormulaModal() {
+    document.getElementById('formula-modal').classList.remove('open');
+  }
 
-        const sbResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/profiles?email=eq.${encodeURIComponent(userEmail)}`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': env.SUPABASE_SERVICE_KEY,
-            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
-            'Prefer': 'return=minimal'
-          },
-          body: JSON.stringify({ plan, ls_subscription_id: subscriptionId, ls_status: lsStatus })
-        });
+  document.addEventListener('DOMContentLoaded', () => {
+    const modal = document.getElementById('formula-modal');
+    if (modal) modal.addEventListener('click', function(e) {
+      if (e.target === this) closeFormulaModal();
+    });
+    const slider = document.getElementById('calc-multiplier');
+    if (slider) slider.addEventListener('input', () => { applyMultiplierToSection3(); });
+    const rateSlider = document.getElementById('calc-rate-slider');
+    if (rateSlider) rateSlider.addEventListener('input', () => { updateRateLabel(); applyGlobalRateToSection3(); });
+  });
 
-        if (!sbResponse.ok) {
-          return new Response('DB update failed', { status: 500, headers: corsHeaders });
-        }
 
-        return new Response(JSON.stringify({ received: true }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
-        });
-
-      } catch (err) {
-        return new Response('Webhook error: ' + err.message, { status: 500, headers: corsHeaders });
-      }
+  sb.auth.onAuthStateChange((event, session) => {
+    if (session?.user) {
+      currentUser = session.user;
+      showApp();
+    } else {
+      currentUser = null;
+      showAuth();
     }
+  });
 
-    // Share link fetcher endpoint
-    if (request.method === 'POST' && url.pathname === '/fetch-share') {
-      const apiKey = request.headers.get("x-api-key");
-      if (apiKey !== "voss-dk7x-2f9m-q372") {
-        return new Response("Unauthorized", { status: 401, headers: corsHeaders });
-      }
-      try {
-        const body = await request.json();
-        const shareUrl = body.url || '';
-        let pageText = '';
-        let fetchError = '';
+  function showAuth() {
+    document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('app-screen').style.display = 'none';
+  }
 
-        try {
-          const direct = await fetch(shareUrl, {
-            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
-          });
-          if (direct.ok) pageText = await direct.text();
-          else fetchError = 'Direct fetch failed: ' + direct.status;
-        } catch(e) { fetchError = 'Direct fetch error: ' + e.message; }
+  function showApp() {
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display = 'block';
+    setupUserUI();
+    loadReportHistory();
+  }
 
-        if (!pageText || pageText.length < 100) {
-          try {
-            const jina = await fetch('https://r.jina.ai/' + shareUrl, {
-              headers: { 'Accept': 'text/plain', 'X-Return-Format': 'text' }
-            });
-            if (jina.ok) pageText = await jina.text();
-            else fetchError += ' | Jina failed: ' + jina.status;
-          } catch(e) { fetchError += ' | Jina error: ' + e.message; }
-        }
+  function setupUserUI() {
+    const email = currentUser.email;
+    const name = currentUser.user_metadata?.full_name || email;
+    const initials = name.charAt(0).toUpperCase();
+    document.getElementById('user-email').textContent = email;
+    document.getElementById('user-avatar').textContent = initials;
+  }
 
-        if (!pageText || pageText.length < 100) {
-          return new Response(JSON.stringify({
-            error: 'Could not fetch page. Try uploading the JSON export instead. Debug: ' + fetchError
-          }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-        }
+  // ─── SHARE LINK FETCHER ───
+  let parsedConversations = [];
 
-        const extractResponse = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
-          body: JSON.stringify({
-            model: "claude-haiku-4-5-20251001",
-            max_tokens: 8000,
-            messages: [{ role: "user", content: `Extract the conversation from this page. Format as:\nUser: [message]\nAssistant: [message]\nReturn ONLY the conversation.\n\nContent:\n${pageText.substring(0, 50000)}` }]
-          })
-        });
+  async function fetchShareLink() {
+    const input = document.getElementById('share-link-input');
+    const status = document.getElementById('share-link-status');
+    const btn = document.querySelector('.share-link-btn');
+    const url = input.value.trim();
 
-        const extractData = await extractResponse.json();
-        const text = extractData.content?.[0]?.text || '';
+    if (!url) { setShareStatus('Enter a share link first', 'error'); return; }
+    if (!url.startsWith('http')) { setShareStatus('Please enter a valid URL', 'error'); return; }
 
-        if (!text || text.length < 20) {
-          return new Response(JSON.stringify({ error: 'Could not parse conversation from this page' }), {
-            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
-          });
-        }
-
-        return new Response(JSON.stringify({ text }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-
-      } catch (err) {
-        return new Response(JSON.stringify({ error: err.message }), {
-          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
-        });
-      }
-    }
-
-    // PDF text extraction endpoint
-    if (request.method === 'POST' && url.pathname === '/extract-pdf') {
-      const apiKey = request.headers.get("x-api-key");
-      if (apiKey !== "voss-dk7x-2f9m-q372") {
-        return new Response("Unauthorized", { status: 401, headers: corsHeaders });
-      }
-      try {
-        const body = await request.json();
-        const pdfBase64 = body.pdf || '';
-        const extractResponse = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
-          body: JSON.stringify({
-            model: "claude-haiku-4-5-20251001",
-            max_tokens: 8000,
-            messages: [{
-              role: "user",
-              content: [
-                { type: "document", source: { type: "base64", media_type: "application/pdf", data: pdfBase64 } },
-                { type: "text", text: "Extract all text content from this PDF. Return only raw text, preserving conversation structure. No commentary." }
-              ]
-            }]
-          })
-        });
-        const extractData = await extractResponse.json();
-        const text = extractData.content?.[0]?.text || '';
-        return new Response(JSON.stringify({ text }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      } catch (err) {
-        return new Response(JSON.stringify({ error: err.message }), {
-          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
-        });
-      }
-    }
-
-    if (request.method !== "POST") {
-      return new Response("Method not allowed", { status: 405, headers: corsHeaders });
-    }
-
-    const apiKey = request.headers.get("x-api-key");
-    if (apiKey !== "voss-dk7x-2f9m-q372") {
-      return new Response("Unauthorized", { status: 401, headers: corsHeaders });
-    }
+    setShareStatus('⏳ Fetching conversation...', 'loading');
+    btn.disabled = true;
 
     try {
-      const body = await request.json();
-      const chatText = body.chat || "";
-      const name = body.name || "Unknown";
-      const department = body.department || "Unknown";
-
-      if (chatText.trim().length === 0) {
-        return new Response("No chat text provided", { status: 400, headers: corsHeaders });
-      }
-
-      const prompt = `
-You are an AI productivity analyst for VOSS Reporting. Analyze the conversation and return ONLY a valid JSON object. No markdown, no backticks, no extra text.
-
-{
-  "summary": {
-    "hoursSaved": 0,
-    "chatValue": "$0",
-    "projectedBusinessValue": "$0 over 3 years",
-    "projectedValueBreakdown": "Built from X tasks: $Xk labor + $Xk uplift",
-    "yearlyProjection": {
-      "year1": { "value": "$0", "description": "Implementation and early wins" },
-      "year2": { "value": "$0", "description": "Scale and compounding gains" },
-      "year3": { "value": "$0", "description": "Sustained optimization" }
-    },
-    "analogues": [
-      "Specific real-world benchmark with credible source reference",
-      "Second benchmark with credible source reference"
-    ],
-    "mainDrivers": ["Driver 1", "Driver 2", "Driver 3"],
-    "aiContribution": "XX%",
-    "humanContribution": "XX%",
-    "industry": "Specific Industry Name"
-  },
-  "chatRecap": "3-5 sentence plain business summary. No bullets.",
-  "innovation": {
-    "score": 0,
-    "label": "Standard",
-    "novelty": { "score": 0, "evidence": "One specific sentence from the conversation content." },
-    "impact": { "score": 0, "evidence": "One specific sentence on impact potential." },
-    "hybridSynergy": { "score": 0, "evidence": "One specific sentence on human+AI elevation." }
-  },
-  "actionItems": [
-    {
-      "action": "Task description",
-      "hoursSaved": 0,
-      "hoursToComplete": 0,
-      "taskValue": "$0",
-      "status": "Complete",
-      "rationale": "Brief reason",
-      "suggestedRole": "Mid",
-      "notes": ""
-    }
-  ]
-}
-
-INDUSTRY — detect specifically from conversation:
-Examples: "Policy & Legislative Development", "Enterprise SaaS", "Healthcare & Life Sciences", "Financial Services", "E-commerce & Retail", "Legal & Compliance", "Marketing & Growth", "Engineering & Product", "Education & Training", "Real Estate", "Manufacturing & Operations", "Government & Public Sector", "Consulting & Professional Services"
-
-CHAT VALUE:
-chatValue = hoursSaved x $65 x (AI% as decimal). Round $50. Format "$1,250".
-
-TASK VALUE per action item:
-1. Labor = hoursToComplete x $65 x (AI% as decimal)
-2. Strategic uplift by industry:
-   Policy/Legal/Gov: 6x-10x | Tech/Software: 10x-15x | Marketing: 3x-5x
-   Sales/Revenue: 8x-12x | Research: 3x-6x | Operations: 4x-7x | Strategy: 6x-10x
-taskValue = labor + (labor x multiplier). Round $100. Format "$12,500".
-
-3-YEAR PROJECTED BUSINESS VALUE:
-- projectedBusinessValue = total across all 3 years. Format "$XXX,XXX over 3 years"
-- Conservative growth curve based on industry benchmarks:
-  Year 1: 30-35% of total (implementation costs offset gains, early wins)
-  Year 2: 40-45% of total (scale achieved, compounding returns, highest ROI year)
-  Year 3: 20-30% of total (sustained gains, optimization, diminishing marginal returns)
-- Round each year to nearest $500
-- projectedValueBreakdown: one short sentence summarizing methodology
-
-ANALOGUES — 2 sentences with real sources:
-- Reference Gartner, McKinsey, Deloitte, Harvard Business Review, or specific industry reports
-- Tailor to detected industry with specific ROI figures and timeframes
-- Example: "Similar AI governance initiatives in public sector yield 3.2-4.8x ROI within 24 months (Deloitte Public Sector AI Report, 2024)"
-
-MAIN DRIVERS — 3-4 specific value drivers relevant to this industry and initiative
-
-INNOVATION SCORING:
-novelty (40%): uniqueness vs standard approaches — 80-100 first-of-kind, 60-79 meaningful diff, 40-59 fresh angles, 0-39 standard
-impact (30%): breadth and scalability — 80-100 systemic/market-defining, 60-79 sector-level, 40-59 team-level, 0-39 local
-hybridSynergy (30%): human+AI elevation — 80-100 breakthrough thinking, 60-79 clear amplification, 40-59 productive, 0-39 mechanical
-overall = (novelty x 0.4)+(impact x 0.3)+(hybridSynergy x 0.3). Round integer.
-label: 85-100="Exceptional" 70-84="High" 50-69="Moderate" 0-49="Standard"
-
-RULES:
-status = "Complete" | "In Progress" | "Planned"
-suggestedRole = "Junior" | "Mid" | "Senior" | "Executive"
-notes = ""
-5-8 action items ranked by taskValue descending
-aiContribution + humanContribution = 100%
-CONSISTENCY: Same chat = within 10% variance
-
-Conversation:
-${chatText}
-`;
-
-      const anthropicResponse = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": env.ANTHROPIC_API_KEY,
-          "anthropic-version": "2023-06-01"
-        },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-5",
-          max_tokens: 8000,
-          messages: [{ role: "user", content: prompt }]
-        })
+      const response = await fetch(WORKER_URL + '/fetch-share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
+        body: JSON.stringify({ url })
       });
 
-      const aiData = await anthropicResponse.json();
+      const data = await response.json();
 
-      if (!anthropicResponse.ok || !aiData.content) {
-        return new Response(JSON.stringify(aiData), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
-        });
+      if (!response.ok || data.error) {
+        throw new Error(data.error || 'Failed to fetch conversation');
       }
 
-      let content = aiData.content[0].text;
-      content = content.replace(/```json\s*|\s*```/g, "").trim();
-
-      let parsedJson;
-      try {
-        parsedJson = JSON.parse(content);
-      } catch (e) {
-        return new Response("AI failed to return valid JSON: " + content, { status: 500, headers: corsHeaders });
-      }
-
-      const summary = parsedJson.summary || {};
-      const actionItems = parsedJson.actionItems || [];
-
-      await env.DB.prepare(`
-        INSERT INTO reports (name, department, chat_text, tasks, hours_saved, economic_value, projected_value, ai_contribution, human_contribution, category)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).bind(
-        name,
-        department,
-        chatText,
-        JSON.stringify(actionItems.map(t => t.action)),
-        summary.hoursSaved || 0,
-        0,
-        summary.projectedBusinessValue || "$0",
-        summary.aiContribution || "0%",
-        summary.humanContribution || "0%",
-        summary.industry || "Uncategorized"
-      ).run();
-
-      return new Response(JSON.stringify(parsedJson), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
+      document.getElementById('rep-issue').value = data.text;
+      setShareStatus('✓ Conversation loaded successfully!', 'success');
+      input.value = '';
 
     } catch (err) {
-      return new Response(`Server Error: ${err.message}`, { status: 500, headers: corsHeaders });
+      setShareStatus('✕ ' + err.message, 'error');
+    } finally {
+      btn.disabled = false;
     }
   }
-};
+
+  function setShareStatus(msg, type) {
+    const el = document.getElementById('share-link-status');
+    el.textContent = msg;
+    el.className = 'share-link-status ' + type;
+  }
+
+  // Allow Enter key on share link input
+  document.addEventListener('DOMContentLoaded', () => {
+    const shareInput = document.getElementById('share-link-input');
+    if (shareInput) {
+      shareInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); fetchShareLink(); }
+      });
+    }
+  });
+
+  // ─── FILE UPLOAD ───
+  function handleDragOver(e) {
+    e.preventDefault();
+    document.getElementById('upload-zone').classList.add('dragover');
+  }
+
+  function handleDragLeave(e) {
+    document.getElementById('upload-zone').classList.remove('dragover');
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    document.getElementById('upload-zone').classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) processFile(file);
+  }
+
+  function handleFileSelect(e) {
+    const file = e.target.files[0];
+    if (file) processFile(file);
+  }
+
+  async function processFile(file) {
+    const zone = document.getElementById('upload-zone');
+    const status = document.getElementById('upload-status');
+    zone.className = 'upload-zone';
+    status.textContent = '⏳ Processing ' + file.name + '...';
+
+    try {
+      const ext = file.name.split('.').pop().toLowerCase();
+      let text = '';
+
+      if (ext === 'pdf') {
+        text = await extractPDF(file);
+      } else if (ext === 'json') {
+        text = await extractJSON(file);
+      } else if (['txt', 'md'].includes(ext)) {
+        text = await file.text();
+      } else if (ext === 'html') {
+        const raw = await file.text();
+        const div = document.createElement('div');
+        div.innerHTML = raw;
+        text = div.innerText;
+      } else {
+        throw new Error('Unsupported file type: .' + ext);
+      }
+
+      if (!text || text.trim().length < 20) throw new Error('File appears empty or unreadable');
+
+      document.getElementById('rep-issue').value = text.trim();
+      zone.classList.add('success');
+      status.textContent = '✓ ' + file.name + ' loaded (' + text.length.toLocaleString() + ' chars)';
+
+    } catch (err) {
+      zone.classList.add('error');
+      status.textContent = '✕ ' + err.message;
+    }
+  }
+
+  async function extractPDF(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const base64 = e.target.result.split(',')[1];
+          const response = await fetch(WORKER_URL + '/extract-pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
+            body: JSON.stringify({ pdf: base64 })
+          });
+          if (!response.ok) throw new Error('PDF extraction failed — try copy/paste instead');
+          const data = await response.json();
+          resolve(data.text || '');
+        } catch (err) { reject(err); }
+      };
+      reader.onerror = () => reject(new Error('Could not read PDF'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function extractJSON(file) {
+    const text = await file.text();
+    const json = JSON.parse(text);
+
+    // ChatGPT export: array of conversations
+    if (Array.isArray(json) && json.length > 0 && json[0].mapping) {
+      parsedConversations = json;
+
+      if (json.length === 1) {
+        // Single conversation — just load it
+        return extractSingleChatGPTConvo(json[0]);
+      }
+
+      // Multiple conversations — show picker
+      const select = document.getElementById('json-conversation-select');
+      select.innerHTML = '';
+      json.forEach((convo, i) => {
+        const title = convo.title || 'Conversation ' + (i + 1);
+        const date = convo.create_time
+          ? new Date(convo.create_time * 1000).toLocaleDateString()
+          : '';
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = title + (date ? ' — ' + date : '');
+        select.appendChild(opt);
+      });
+      document.getElementById('json-picker').style.display = 'block';
+      return ''; // textarea stays empty until user picks one
+    }
+
+    // Claude / generic messages array
+    if (json.messages && Array.isArray(json.messages)) {
+      return json.messages.map(m => {
+        const role = m.role === 'user' ? 'User' : 'Assistant';
+        const content = Array.isArray(m.content)
+          ? m.content.filter(c => c.type === 'text').map(c => c.text).join(' ')
+          : (m.content || '');
+        return role + ': ' + content;
+      }).join('\n\n');
+    }
+
+    return JSON.stringify(json, null, 2);
+  }
+
+  function extractSingleChatGPTConvo(convo) {
+    if (!convo.mapping) return '';
+    const parts = [];
+    // Sort nodes by create_time to preserve order
+    const nodes = Object.values(convo.mapping)
+      .filter(n => n.message?.content?.parts?.length > 0)
+      .sort((a, b) => (a.message.create_time || 0) - (b.message.create_time || 0));
+    nodes.forEach(node => {
+      const msg = node.message;
+      const role = msg.author?.role === 'user' ? 'User' : 'Assistant';
+      const content = msg.content.parts.join(' ').trim();
+      if (content && content !== 'undefined') parts.push(role + ': ' + content);
+    });
+    return parts.join('\n\n');
+  }
+
+  function loadSelectedConversation() {
+    const select = document.getElementById('json-conversation-select');
+    const index = parseInt(select.value);
+    const convo = parsedConversations[index];
+    if (!convo) return;
+    const text = extractSingleChatGPTConvo(convo);
+    document.getElementById('rep-issue').value = text;
+    document.getElementById('json-picker').style.display = 'none';
+    const zone = document.getElementById('upload-zone');
+    const status = document.getElementById('upload-status');
+    zone.classList.add('success');
+    status.textContent = '✓ Loaded: ' + (convo.title || 'Conversation') + ' (' + text.length.toLocaleString() + ' chars)';
+  }
+
+  // ─── AUTH FUNCTIONS ───
+  function switchAuthTab(tab) {
+    document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('login-form').style.display = tab === 'login' ? 'flex' : 'none';
+    document.getElementById('signup-form').style.display = tab === 'signup' ? 'flex' : 'none';
+  }
+
+  function showAuthMessage(formId, msg, type) {
+    const el = document.getElementById(formId + '-message');
+    el.textContent = msg;
+    el.className = 'auth-message ' + type;
+    el.style.display = 'block';
+  }
+
+  async function handleForgotPassword() {
+    const email = document.getElementById('login-email').value.trim();
+    if (!email) {
+      showAuthMessage('login', 'Enter your email address above first', 'error');
+      return;
+    }
+    const { error } = await sb.auth.resetPasswordForEmail(email, {
+      redirectTo: 'https://app.vossintel.com'
+    });
+    if (error) {
+      showAuthMessage('login', error.message, 'error');
+    } else {
+      showAuthMessage('login', '✓ Password reset email sent! Check your inbox.', 'success');
+    }
+  }
+
+  async function handleLogin() {
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    if (!email || !password) { showAuthMessage('login', 'Please enter email and password', 'error'); return; }
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) showAuthMessage('login', error.message, 'error');
+  }
+
+  async function handleSignup() {
+    const name = document.getElementById('signup-name').value.trim();
+    const email = document.getElementById('signup-email').value.trim();
+    const password = document.getElementById('signup-password').value;
+    const terms = document.getElementById('terms-checkbox').checked;
+    const emailOptIn = document.getElementById('email-opt-in-checkbox').checked;
+
+    if (!name || !email || !password) { showAuthMessage('signup', 'Please fill in all fields', 'error'); return; }
+    if (password.length < 8) { showAuthMessage('signup', 'Password must be at least 8 characters', 'error'); return; }
+    if (!terms) { showAuthMessage('signup', 'Please accept the Terms of Service and Privacy Policy', 'error'); return; }
+
+    const { data, error } = await sb.auth.signUp({
+      email, password,
+      options: { data: { full_name: name, email_opt_in: emailOptIn } }
+    });
+
+    if (error) {
+      showAuthMessage('signup', error.message, 'error');
+    } else {
+      // Save opt-in preference to profiles table
+      if (data?.user) {
+        await sb.from('profiles').upsert({
+          id: data.user.id,
+          email: email,
+          full_name: name,
+          email_opt_in: emailOptIn
+        });
+      }
+      showAuthMessage('signup', '✓ Check your email to confirm your account!', 'success');
+    }
+  }
+
+  async function handleSignOut() {
+    try {
+      await sb.auth.signOut();
+    } catch(e) {
+      console.error('Sign out error:', e);
+    }
+    window.location.href = window.location.origin + window.location.pathname;
+  }
+
+  // ─── SIDEBAR ───
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebar-overlay').classList.toggle('open');
+  }
+
+  function newReport() {
+    document.getElementById('reportForm').reset();
+    document.getElementById('section-summary').style.display = 'none';
+    document.getElementById('section-recap').style.display = 'none';
+    document.getElementById('section-actions').style.display = 'none';
+    document.getElementById('export-row').style.display = 'none';
+    setStatus('System ready — submit a report to begin', '');
+    if (window.innerWidth <= 768) toggleSidebar();
+    window.scrollTo(0, 0);
+  }
+
+  // ─── PLAN & USAGE ───
+  let userPlan = 'free';
+  let reportsToday = 0;
+  const FREE_LIMIT = 5;
+  const UPGRADE_URL = 'https://vossintel.lemonsqueezy.com/checkout/buy/41493af2-e6e6-4d54-91a5-bd506b23fcf8';
+
+  // Apply pro UI immediately — don't wait for auth
+  document.addEventListener('DOMContentLoaded', () => {
+    updatePlanUI();
+  });
+
+  async function loadUserPlan() {
+    if (!currentUser) return;
+    try {
+      const { data, error } = await sb
+        .from('profiles')
+        .select('plan, report_count_today, report_count_reset')
+        .eq('id', currentUser.id)
+        .single();
+
+      if (error) {
+        const { data: b } = await sb.from('profiles').select('plan').eq('id', currentUser.id).single();
+        userPlan = b?.plan || 'free';
+      } else {
+        userPlan = data?.plan || 'free';
+        const today = new Date().toISOString().split('T')[0];
+        if (data?.report_count_reset && data.report_count_reset !== today) {
+          reportsToday = 0;
+          sb.from('profiles').update({ report_count_today: 0, report_count_reset: today }).eq('id', currentUser.id).then(() => {}).catch(() => {});
+        } else {
+          reportsToday = data?.report_count_today || 0;
+        }
+      }
+    } catch (e) {
+      userPlan = 'free';
+    }
+
+    // Owner account always Pro
+    if (currentUser.email === 'eliasvoss77@gmail.com') userPlan = 'pro';
+
+    console.log('Plan loaded:', userPlan, 'for:', currentUser.email);
+    updatePlanUI();
+  }
+
+  async function incrementReportCount() {
+    if (!currentUser) return;
+    reportsToday++;
+    const today = new Date().toISOString().split('T')[0];
+    await sb.from('profiles').update({
+      report_count_today: reportsToday,
+      report_count_reset: today
+    }).eq('id', currentUser.id);
+    updatePlanUI();
+  }
+
+  function updatePlanUI() {
+    const planEl = document.getElementById('user-plan-badge');
+    const upgradeBanner = document.getElementById('upgrade-banner');
+    const historyLock = document.getElementById('history-lock');
+    const historySection = document.getElementById('report-log-section');
+    const exportLock = document.getElementById('export-lock');
+    const exportRow = document.getElementById('export-row');
+
+    if (userPlan === 'pro') {
+      if (planEl) { planEl.textContent = 'PRO'; planEl.className = 'user-plan pro'; }
+      if (upgradeBanner) upgradeBanner.style.cssText = 'display:none!important';
+      if (historyLock) historyLock.style.cssText = 'display:none!important';
+      if (historySection) historySection.style.cssText = 'display:block!important';
+      // Export shown when report is ready — handled by generateAiReport
+      if (exportLock) exportLock.style.cssText = 'display:none!important';
+    } else {
+      const remaining = Math.max(0, FREE_LIMIT - reportsToday);
+      if (planEl) {
+        planEl.textContent = `FREE — ${remaining}/${FREE_LIMIT} today`;
+        planEl.className = 'user-plan free';
+      }
+      if (upgradeBanner) upgradeBanner.style.cssText = 'display:block!important';
+      if (historyLock) historyLock.style.cssText = 'display:block!important';
+      if (historySection) historySection.style.cssText = 'display:none!important';
+      // Show export lock instead of export buttons
+      if (exportLock) exportLock.style.cssText = 'display:flex!important';
+      if (exportRow) exportRow.style.cssText = 'display:none!important';
+    }
+  }
+
+  function canSubmitReport() {
+    if (userPlan === 'pro') return true;
+    if (reportsToday >= FREE_LIMIT) {
+      setStatus(`Daily limit reached (${FREE_LIMIT}/day on Free plan) — Upgrade to Pro for unlimited reports`, 'error');
+      showUpgradePrompt();
+      return false;
+    }
+    return true;
+  }
+
+  function showUpgradePrompt() {
+    document.getElementById('upgrade-modal').classList.add('open');
+  }
+
+  function closeUpgradeModal() {
+    document.getElementById('upgrade-modal').classList.remove('open');
+  }
+
+  // ─── REPORT HISTORY ───
+  async function deleteReport(id, event) {
+    event.stopPropagation();
+    if (!confirm('Delete this report?')) return;
+    const { error } = await sb.from('reports').delete().eq('id', id).eq('user_id', currentUser.id);
+    if (!error) loadReportHistory();
+  }
+
+  async function loadReportHistory() {
+    if (!currentUser) return;
+    if (userPlan !== 'pro') { updatePlanUI(); return; }
+    const { data, error } = await sb
+      .from('reports')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) { console.error('Error loading reports:', error); return; }
+
+    const log = document.getElementById('report-log');
+    if (!log) return;
+
+    if (!data || data.length === 0) {
+      log.innerHTML = '<div class="report-log-empty">[ NO REPORTS YET ]<br>Submit your first report<br>to begin tracking value</div>';
+      return;
+    }
+
+    log.innerHTML = '';
+    data.forEach(r => {
+      const date = new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const item = document.createElement('div');
+      item.className = 'report-log-item';
+      item.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+          <div style="flex:1;min-width:0;">
+            <div class="report-log-category">${r.category || 'Uncategorized'}</div>
+            <div class="report-log-meta">
+              <span class="report-log-value">${r.projected_value || '—'}</span>
+              <span class="report-log-date">${date}</span>
+            </div>
+          </div>
+          <button class="report-log-delete" onclick="deleteReport('${r.id}', event)">✕ Del</button>
+        </div>`;
+      item.addEventListener('click', (e) => {
+        if (!e.target.classList.contains('report-log-delete')) {
+          loadHistoricalReport(r, item);
+        }
+      });
+      log.appendChild(item);
+    });
+  }
+
+  function loadHistoricalReport(r, el) {
+    document.querySelectorAll('.report-log-item').forEach(i => i.classList.remove('active'));
+    el.classList.add('active');
+
+    document.getElementById('out-hours').textContent = r.hours_saved ?? '—';
+    document.getElementById('out-cost').textContent = r.chat_value || '—';
+    document.getElementById('out-projected').textContent = r.projected_value ?? '—';
+    document.getElementById('out-projected-breakdown').textContent = 'From saved report';
+    document.getElementById('out-category').textContent = r.category ?? '—';
+    document.getElementById('out-ai').textContent = r.ai_contribution ?? '—';
+    document.getElementById('out-human').textContent = r.human_contribution ?? '—';
+    document.getElementById('out-source').textContent = `Source: ${r.name} — ${r.department}`;
+    document.getElementById('section-summary').style.display = 'block';
+    document.getElementById('section-calculator').style.display = 'block';
+
+    document.getElementById('out-recap').textContent = r.chat_recap || '—';
+    document.getElementById('section-recap').style.display = 'block';
+
+    const actionsEl = document.getElementById('out-actions');
+    actionsEl.innerHTML = '';
+    const items = r.action_items || [];
+    rawActionItems = items;
+    items.forEach((a, i) => {
+      const statusClass = (a.status || 'Planned').replace(' ', '-');
+      actionsEl.innerHTML += buildActionItem(a, i, statusClass, '');
+    });
+    document.getElementById('section-actions').style.display = 'block';
+    if (userPlan === 'pro') {
+      document.getElementById('export-row').style.display = 'flex';
+      document.getElementById('export-lock').style.display = 'none';
+    } else {
+      document.getElementById('export-row').style.display = 'none';
+      document.getElementById('export-lock').style.display = 'flex';
+    }
+
+    if (window.innerWidth <= 768) toggleSidebar();
+    window.scrollTo(0, 0);
+    setStatus('Report loaded from history', 'success');
+  }
+
+  // ─── FORM & REPORT ───
+  document.getElementById('reportForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const report = {
+      name: document.getElementById('rep-name').value,
+      department: document.getElementById('rep-department').value,
+      text: document.getElementById('rep-issue').value
+    };
+    sessionReports.push(report);
+    displaySessionReports();
+    document.getElementById('reportForm').reset();
+    setStatus(`Report from ${report.name} submitted successfully`, 'success');
+  });
+
+  function displaySessionReports() {
+    const container = document.getElementById('reports');
+    if (sessionReports.length === 0) {
+      container.innerHTML = '<div class="empty-state">[ NO REPORTS THIS SESSION ]</div>';
+      return;
+    }
+    container.innerHTML = '';
+    sessionReports.forEach(r => {
+      container.innerHTML += `
+        <div class="report-item">
+          <div class="report-meta">
+            <span class="report-name">${r.name}</span>
+            <span class="report-dept">${r.department}</span>
+          </div>
+          <div class="report-preview">${r.text.substring(0, 120)}...</div>
+        </div>`;
+    });
+  }
+
+  function setStatus(msg, type = '') {
+    const bar = document.getElementById('status-bar');
+    bar.className = type;
+    document.getElementById('status-text').textContent = msg;
+  }
+
+  // ─── PROGRESS STAGES ───
+  let progressTimers = [];
+
+  function startProgress() {
+    const stages = [
+      { msg: '📋 Reading transcript...', delay: 0 },
+      { msg: '🔍 Identifying tasks and outcomes...', delay: 3000 },
+      { msg: '💰 Calculating business value...', delay: 8000 },
+      { msg: '⚡ Scoring hybrid innovation...', delay: 14000 },
+      { msg: '📊 Building your report...', delay: 20000 },
+      { msg: '✨ Almost there...', delay: 26000 },
+    ];
+
+    progressTimers = [];
+    stages.forEach(({ msg, delay }) => {
+      const t = setTimeout(() => {
+        const statusEl = document.getElementById('status-text');
+        if (statusEl) statusEl.textContent = msg;
+      }, delay);
+      progressTimers.push(t);
+    });
+  }
+
+  function stopProgress() {
+    progressTimers.forEach(t => clearTimeout(t));
+    progressTimers = [];
+  }
+
+  async function generateAiReport() {
+    if (sessionReports.length === 0) { setStatus('No reports to analyze — submit a report first', 'error'); return; }
+    if (!canSubmitReport()) return;
+
+    setStatus('📋 Reading transcript...', 'loading');
+    startProgress();
+    document.getElementById('section-summary').style.display = 'none';
+    document.getElementById('section-recap').style.display = 'none';
+    document.getElementById('section-innovation').style.display = 'none';
+    document.getElementById('section-actions').style.display = 'none';
+    document.getElementById('export-row').style.display = 'none';
+
+    try {
+      const latestReport = sessionReports[sessionReports.length - 1];
+
+      const response = await fetch(WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
+        body: JSON.stringify({ chat: latestReport.text, name: latestReport.name, department: latestReport.department })
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        stopProgress();
+        throw new Error('Worker ' + response.status + ': ' + errText.substring(0, 200));
+      }
+
+      const data = await response.json();
+      stopProgress();
+      setStatus('✓ Report complete!', 'success');
+      currentReportData = { ...data, latestReport };
+
+      const summary = data.summary || {};
+      const chatRecap = data.chatRecap || '';
+      const actionItems = data.actionItems || [];
+
+      // Section 1
+      document.getElementById('out-hours').textContent = summary.hoursSaved ?? '—';
+      document.getElementById('out-cost').textContent = summary.chatValue ?? '—';
+      document.getElementById('out-projected').textContent = summary.projectedBusinessValue ?? '—';
+      document.getElementById('out-projected-breakdown').textContent = summary.projectedValueBreakdown ?? '';
+      document.getElementById('out-category').textContent = summary.industry ?? summary.category ?? '—';
+      document.getElementById('out-ai').textContent = summary.aiContribution ?? '—';
+      document.getElementById('out-human').textContent = summary.humanContribution ?? '—';
+      document.getElementById('out-source').textContent = `Source: ${latestReport.name} — ${latestReport.department}`;
+
+      // Yearly projection
+      const yp = summary.yearlyProjection;
+      if (yp) {
+        const ypEl = document.getElementById('out-yearly-projection');
+        if (ypEl) {
+          ypEl.innerHTML = `
+            <div class="yearly-row"><span class="yearly-label">Year 1</span><span class="yearly-value">${yp.year1?.value || '—'}</span><span class="yearly-desc">${yp.year1?.description || ''}</span></div>
+            <div class="yearly-row"><span class="yearly-label">Year 2</span><span class="yearly-value">${yp.year2?.value || '—'}</span><span class="yearly-desc">${yp.year2?.description || ''}</span></div>
+            <div class="yearly-row"><span class="yearly-label">Year 3</span><span class="yearly-value">${yp.year3?.value || '—'}</span><span class="yearly-desc">${yp.year3?.description || ''}</span></div>
+          `;
+          ypEl.style.display = 'block';
+        }
+      }
+
+      // Analogues and drivers
+      const analoguesEl = document.getElementById('out-analogues');
+      if (analoguesEl && summary.analogues?.length) {
+        analoguesEl.innerHTML = summary.analogues.map(a => `<div class="analogue-item">— ${a}</div>`).join('');
+        analoguesEl.style.display = 'block';
+      }
+
+      const driversEl = document.getElementById('out-drivers');
+      if (driversEl && summary.mainDrivers?.length) {
+        driversEl.innerHTML = summary.mainDrivers.map(d => `<span class="driver-tag">${d}</span>`).join('');
+        driversEl.style.display = 'flex';
+      }
+      document.getElementById('section-summary').style.display = 'block';
+      document.getElementById('section-calculator').style.display = 'block';
+
+      // Section 2
+      document.getElementById('out-recap').textContent = chatRecap;
+      document.getElementById('section-recap').style.display = 'block';
+
+      // Section 2C — Innovation Score
+      const innov = data.innovation;
+      if (innov) {
+        const score = innov.score || 0;
+        const label = innov.label || 'Standard';
+        document.getElementById('innov-score').textContent = score;
+        document.getElementById('innov-label').textContent = label;
+        document.getElementById('innov-label').className = 'innovation-label label-' + label;
+
+        // Color the score number based on label
+        const scoreEl = document.getElementById('innov-score');
+        if (label === 'Exceptional') scoreEl.style.color = 'var(--accent)';
+        else if (label === 'High') scoreEl.style.color = 'var(--accent2)';
+        else if (label === 'Moderate') scoreEl.style.color = 'var(--yellow)';
+        else scoreEl.style.color = 'var(--muted)';
+
+        // Novelty
+        const nov = innov.novelty || {};
+        document.getElementById('innov-novelty-score').textContent = (nov.score || 0) + '/100';
+        document.getElementById('innov-novelty-evidence').textContent = nov.evidence || '—';
+        setTimeout(() => {
+          document.getElementById('innov-novelty-bar').style.width = (nov.score || 0) + '%';
+        }, 100);
+
+        // Impact
+        const imp = innov.impact || {};
+        document.getElementById('innov-impact-score').textContent = (imp.score || 0) + '/100';
+        document.getElementById('innov-impact-evidence').textContent = imp.evidence || '—';
+        setTimeout(() => {
+          document.getElementById('innov-impact-bar').style.width = (imp.score || 0) + '%';
+        }, 200);
+
+        // Hybrid Synergy
+        const syn = innov.hybridSynergy || {};
+        document.getElementById('innov-synergy-score').textContent = (syn.score || 0) + '/100';
+        document.getElementById('innov-synergy-evidence').textContent = syn.evidence || '—';
+        setTimeout(() => {
+          document.getElementById('innov-synergy-bar').style.width = (syn.score || 0) + '%';
+        }, 300);
+
+        document.getElementById('section-innovation').style.display = 'block';
+      }
+
+      // Wire calculator with report data
+      const aiPct = parseFloat((summary.aiContribution || '85%').replace('%','')) / 100;
+      calcAiPct = isNaN(aiPct) ? 0.85 : aiPct;
+
+      // Section 3 — store raw items FIRST then recalculate
+      rawActionItems = actionItems;
+      const actionsEl = document.getElementById('out-actions');
+      actionsEl.innerHTML = '';
+      actionItems.forEach((a, i) => {
+        const statusClass = (a.status || 'Planned').replace(' ', '-');
+        const savedNote = actionNotes['action-note-' + i] || '';
+        actionsEl.innerHTML += buildActionItem(a, i, statusClass, savedNote);
+      });
+      document.getElementById('section-actions').style.display = 'block';
+
+      // Show export — Pro gets buttons, Free gets lock
+      if (userPlan === 'pro') {
+        document.getElementById('export-row').style.display = 'flex';
+        document.getElementById('export-lock').style.display = 'none';
+      } else {
+        document.getElementById('export-row').style.display = 'none';
+        document.getElementById('export-lock').style.display = 'flex';
+      }
+
+      // Now recalculate with all action items loaded
+      recalculate();
+
+      // Save to Supabase
+      if (currentUser) {
+        const { error: saveError } = await sb.from('reports').insert({
+          user_id: currentUser.id,
+          name: latestReport.name,
+          department: latestReport.department,
+          category: summary.category || 'Uncategorized',
+          hours_saved: summary.hoursSaved || 0,
+          projected_value: summary.projectedBusinessValue || '$0',
+          ai_contribution: summary.aiContribution || '0%',
+          human_contribution: summary.humanContribution || '0%',
+          chat_recap: chatRecap,
+          action_items: actionItems,
+          chat_value: summary.chatValue || '$0'
+        });
+        if (saveError) {
+          console.error('Save error:', saveError);
+          setStatus('⚠️ Analysis complete — save failed (' + saveError.message + ')', 'error');
+        } else {
+          await incrementReportCount();
+          loadReportHistory();
+          setStatus('✅ Analysis complete — saved to your profile ✓', 'success');
+        }
+      } else {
+        setStatus('Analysis complete', 'success');
+      }
+
+    } catch (err) {
+      stopProgress();
+      console.error(err);
+      setStatus('Error: ' + err.message, 'error');
+    }
+  }
+
+  function buildActionItem(a, i, statusClass, savedNote) {
+    const defaultRate = parseFloat(document.getElementById('calc-rate')?.value) || 65;
+    const defaultHeadcount = parseFloat(document.getElementById('calc-headcount')?.value) || 1;
+    const implCost = Math.round((a.hoursToComplete || 0) * defaultRate * defaultHeadcount / 50) * 50;
+
+    return `
+      <div class="action-item status-${statusClass}" id="action-${i}">
+        <div class="action-main">
+          <div class="action-main-top">
+            <div class="action-light light-${statusClass}" id="light-${i}"></div>
+            <div>
+              <div class="action-text">${a.action}</div>
+              <div class="action-rationale">${a.rationale || ''}</div>
+            </div>
+          </div>
+          <div class="action-metrics-block">
+            <div style="text-align:right;">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:0.58rem;letter-spacing:0.15em;color:var(--muted);text-transform:uppercase;">Value</div>
+              <div class="action-value" id="action-value-${i}">${a.taskValue || '$0'}</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:0.58rem;letter-spacing:0.15em;color:var(--muted);text-transform:uppercase;margin-top:6px;">Cost</div>
+              <div class="action-hours" id="action-cost-${i}">$${implCost.toLocaleString()}</div>
+            </div>
+            <div class="status-toggle">
+              <button class="status-btn ${statusClass === 'Complete' ? 'active-Complete' : ''}" onclick="setActionStatus(${i}, 'Complete')">🟢 Complete</button>
+              <button class="status-btn ${statusClass === 'In-Progress' ? 'active-In-Progress' : ''}" onclick="setActionStatus(${i}, 'In Progress')">🟡 In Progress</button>
+              <button class="status-btn ${statusClass === 'Planned' ? 'active-Planned' : ''}" onclick="setActionStatus(${i}, 'Planned')">🔴 Planned</button>
+            </div>
+          </div>
+        </div>
+        <!-- Per-task overrides -->
+        <div class="task-overrides">
+          <div class="task-override-field" style="flex:2;">
+            <label>Pay Rate — <span id="task-rate-label-${i}">$${defaultRate}/hr</span></label>
+            <input type="range" id="task-rate-slider-${i}" min="10" max="200" step="1" value="${defaultRate}"
+              oninput="updateTaskRateLabel(${i}); updateTaskCost(${i})">
+            <div class="calc-range-row"><span>$10</span><span>$65 Mid</span><span>$200</span></div>
+          </div>
+          <div class="task-override-field">
+            <label>Headcount</label>
+            <input type="number" id="task-headcount-${i}" value="${defaultHeadcount}" min="1" max="50"
+              class="task-number" oninput="updateTaskCost(${i})">
+          </div>
+          <div class="task-override-field">
+            <label>Hrs to Complete</label>
+            <input type="number" id="task-hours-${i}" value="${a.hoursToComplete || 0}" min="0" max="1000"
+              class="task-number" oninput="updateTaskHours(${i}, this.value)">
+          </div>
+        </div>
+        <div class="action-notes-row">
+          <textarea class="notes-field" id="action-note-${i}" placeholder="Add notes..." onchange="saveNote(${i})" onkeyup="saveNote(${i})">${savedNote}</textarea>
+        </div>
+      </div>`;
+  }
+
+  function getTaskRate(index) {
+    const el = document.getElementById('task-rate-slider-' + index);
+    if (el) return parseFloat(el.value) || calcRate;
+    return calcRate;
+  }
+
+  function getTaskHeadcount(index) {
+    const el = document.getElementById('task-headcount-' + index);
+    if (el) return parseFloat(el.value) || 1;
+    return parseFloat(document.getElementById('calc-headcount')?.value) || 1;
+  }
+
+  function getTaskHours(index) {
+    const el = document.getElementById('task-hours-' + index);
+    if (el) return parseFloat(el.value) || 0;
+    return rawActionItems[index]?.hoursToComplete || 0;
+  }
+
+  function updateTaskHours(index, val) {
+    if (rawActionItems[index]) rawActionItems[index].hoursToComplete = parseFloat(val) || 0;
+    updateTaskCost(index);
+  }
+
+  function updateTaskRateLabel(index) {
+    const el = document.getElementById('task-rate-slider-' + index);
+    if (!el) return;
+    const val = parseInt(el.value);
+    const labelEl = document.getElementById('task-rate-label-' + index);
+    if (labelEl) labelEl.textContent = `$${val}/hr`;
+    updateTaskCost(index);
+  }
+
+  function updateTaskCost(index) {
+    const rate = getTaskRate(index);
+    const headcount = getTaskHeadcount(index);
+    const hours = getTaskHours(index);
+    const multiplier = parseFloat(document.getElementById('calc-multiplier')?.value) || 1.0;
+    const cost = Math.round((hours * rate * headcount * multiplier) / 50) * 50;
+    const costEl = document.getElementById('action-cost-' + index);
+    if (costEl) costEl.textContent = '$' + cost.toLocaleString();
+    recalculate();
+  }
+
+  function setActionStatus(index, newStatus) {
+    const statusClass = newStatus.replace(' ', '-');
+    const item = document.getElementById('action-' + index);
+    if (!item) return;
+    item.className = 'action-item status-' + statusClass;
+    const light = document.getElementById('light-' + index);
+    light.className = 'action-light light-' + statusClass;
+    item.querySelectorAll('.status-btn').forEach(btn => {
+      btn.className = 'status-btn';
+      if ((newStatus === 'Complete' && btn.textContent.includes('Complete')) ||
+          (newStatus === 'In Progress' && btn.textContent.includes('In Progress')) ||
+          (newStatus === 'Planned' && btn.textContent.includes('Planned'))) {
+        btn.className = 'status-btn active-' + statusClass;
+      }
+    });
+  }
+
+  function saveNote(index) {
+    const noteEl = document.getElementById('action-note-' + index);
+    if (noteEl) {
+      actionNotes['action-note-' + index] = noteEl.value;
+    }
+  }
+
+  function clearSession() {
+    if (confirm('Clear this session?')) {
+      sessionReports = [];
+      actionNotes = {};
+      currentReportData = null;
+      rawActionItems = [];
+      displaySessionReports();
+      document.getElementById('section-summary').style.display = 'none';
+      document.getElementById('section-calculator').style.display = 'none';
+      document.getElementById('section-recap').style.display = 'none';
+      document.getElementById('section-innovation').style.display = 'none';
+      document.getElementById('section-actions').style.display = 'none';
+      document.getElementById('export-row').style.display = 'none';
+      setStatus('Session cleared', '');
+    }
+  }
+
+  function exportPDF() {
+    document.getElementById('export-row').style.display = 'none';
+    document.querySelectorAll('.btn-row').forEach(el => el.style.display = 'none');
+    document.getElementById('status-bar').style.display = 'none';
+    window.print();
+    setTimeout(() => {
+      document.getElementById('export-row').style.display = 'flex';
+      document.querySelectorAll('.btn-row').forEach(el => el.style.display = 'flex');
+      document.getElementById('status-bar').style.display = 'flex';
+    }, 1000);
+  }
+
+  // ─── AUTH STATE ───
+  sb.auth.onAuthStateChange(async (event, session) => {
+    currentUser = session?.user || null;
+    if (currentUser) {
+      document.getElementById('auth-screen').style.display = 'none';
+      document.getElementById('app-screen').style.display = 'block';
+      document.getElementById('app-screen').style.minHeight = '100vh';
+      document.getElementById('user-email').textContent = currentUser.email;
+      document.getElementById('user-avatar').textContent = (currentUser.email?.[0] || '?').toUpperCase();
+      await loadUserPlan();
+      loadReportHistory();
+    } else {
+      document.getElementById('auth-screen').style.display = 'flex';
+      document.getElementById('app-screen').style.display = 'none';
+      userPlan = 'free';
+      reportsToday = 0;
+    }
+  });
+
+  function shareReport() {
+    const source = document.getElementById('out-source').textContent || 'VOSS Report';
+    const hours = document.getElementById('out-hours').textContent;
+    const projected = document.getElementById('out-projected').textContent;
+    const category = document.getElementById('out-category').textContent;
+    const recap = document.getElementById('out-recap').textContent;
+    const actions = [];
+    document.querySelectorAll('.action-text').forEach(el => actions.push('• ' + el.textContent));
+    const subject = encodeURIComponent('VOSS Report — ' + category);
+    const body = encodeURIComponent(
+      'VOSS VALUE REPORT\n═══════════════════════════\n\n' +
+      source + '\n\nSUMMARY\nHours Saved: ' + hours + '\nProjected Value: ' + projected +
+      '\nCategory: ' + category + '\n\nCHAT SUMMARY\n' + recap +
+      '\n\nACTION PRIORITY LIST\n' + actions.join('\n') +
+      '\n\n─────────────────────────\nGenerated by VOSS Intel — app.vossintel.com'
+    );
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  }
+</script>
+<!-- Upgrade Modal -->
+<div class="modal-overlay" id="upgrade-modal">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-title">⚡ Upgrade to VOSS Pro</div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:14px;">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;letter-spacing:0.15em;color:var(--muted);margin-bottom:8px;">FREE</div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:10px;">$0/mo</div>
+          <div style="font-size:0.78rem;color:var(--muted);line-height:1.8;">
+            5 reports/day<br>Full report output<br>In-app view only<br><span style="opacity:0.4;">No history</span><br><span style="opacity:0.4;">No export</span>
+          </div>
+        </div>
+        <div style="background:rgba(0,255,136,0.05);border:1px solid rgba(0,255,136,0.3);border-radius:3px;padding:14px;position:relative;">
+          <div style="position:absolute;top:-10px;right:10px;background:var(--accent);color:#000;font-family:'JetBrains Mono',monospace;font-size:0.6rem;padding:2px 8px;border-radius:2px;font-weight:700;">BEST VALUE</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;letter-spacing:0.15em;color:var(--accent);margin-bottom:8px;">PRO</div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--accent);margin-bottom:10px;">$19.99/mo</div>
+          <div style="font-size:0.78rem;color:var(--text);line-height:1.8;">
+            Unlimited reports<br>Full report output<br>Export PDF<br>Report history<br>Priority processing
+          </div>
+        </div>
+      </div>
+      <a href="https://vossintel.lemonsqueezy.com/checkout/buy/41493af2-e6e6-4d54-91a5-bd506b23fcf8" target="_blank" style="display:block;background:var(--accent);color:#000;text-align:center;padding:14px;border-radius:3px;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:0.85rem;letter-spacing:0.1em;text-decoration:none;transition:all 0.2s;" onmouseover="this.style.background='#00cc6a'" onmouseout="this.style.background='var(--accent)'">
+        UPGRADE TO PRO — $19.99/MONTH
+      </a>
+    </div>
+    <button class="modal-close" onclick="closeUpgradeModal()">✕ Maybe later</button>
+  </div>
+</div>
+</body>
+</html>
