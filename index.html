@@ -630,7 +630,7 @@
     background: var(--surface2);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 18px 16px;
+    padding: 14px 14px;
     text-align: center;
     overflow: hidden;
     transition: border-color 0.2s, transform 0.2s;
@@ -640,17 +640,17 @@
 
   .stat-label {
     font-family: 'Inter', sans-serif;
-    font-size: 0.68rem;
+    font-size: 0.65rem;
     font-weight: 500;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.07em;
     color: var(--muted);
     text-transform: uppercase;
-    margin-bottom: 10px;
+    margin-bottom: 7px;
   }
 
   .stat-value {
     font-family: 'Syne', sans-serif;
-    font-size: 1.6rem;
+    font-size: 1.35rem;
     font-weight: 700;
     color: var(--accent);
     line-height: 1;
@@ -1731,8 +1731,12 @@
           <div class="summary-grid">
             <div class="stat-box"><div class="stat-label">Hours Saved</div><div class="stat-value" id="out-hours">—</div></div>
             <div class="stat-box"><div class="stat-label">Chat Value</div><div class="stat-value blue" id="out-cost">—</div></div>
-            <div class="stat-box"><div class="stat-label">Projected Business Value</div><div class="stat-value" id="out-projected">—</div><div style="font-family:'JetBrains Mono',monospace;font-size:0.6rem;color:var(--muted);margin-top:6px;line-height:1.5;" id="out-projected-breakdown"></div></div>
-            <div class="stat-box"><div class="stat-label">Category</div><div class="stat-value blue" style="font-size:0.85rem;" id="out-category">—</div></div>
+            <div class="stat-box">
+              <div class="stat-label">Projected Business Value</div>
+              <div class="stat-value" id="out-projected">—</div>
+              <div style="font-family:'Inter',sans-serif;font-size:0.7rem;color:var(--muted);margin-top:5px;font-weight:400;" id="out-projected-timeframe"></div>
+            </div>
+            <div class="stat-box"><div class="stat-label">Industry</div><div class="stat-value blue" style="font-size:0.85rem;" id="out-category">—</div></div>
           </div>
           <div class="contrib-row">
             <div class="contrib-box"><div class="stat-label">AI Contribution</div><div class="stat-value" id="out-ai">—</div></div>
@@ -1740,7 +1744,7 @@
           </div>
           <div class="analysis-source" id="out-source"></div>
 
-          <!-- Yearly Projection -->
+          <!-- Yearly Projection + Breakdown -->
           <div id="out-yearly-projection" style="display:none; margin-top:16px;"></div>
 
           <!-- Analogues -->
@@ -2707,19 +2711,28 @@
       // Section 1
       document.getElementById('out-hours').textContent = summary.hoursSaved ?? '—';
       document.getElementById('out-cost').textContent = summary.chatValue ?? '—';
-      document.getElementById('out-projected').textContent = summary.projectedBusinessValue ?? '—';
-      document.getElementById('out-projected-breakdown').textContent = summary.projectedValueBreakdown ?? '';
+      // Split projected business value from "over 3 years" text
+      const projectedRaw = summary.projectedBusinessValue ?? '—';
+      const projectedParts = projectedRaw.match(/^(\$[\d,]+)\s*(.*)?$/);
+      if (projectedParts) {
+        document.getElementById('out-projected').textContent = projectedParts[1];
+        document.getElementById('out-projected-timeframe').textContent = projectedParts[2] || '';
+      } else {
+        document.getElementById('out-projected').textContent = projectedRaw;
+      }
+
       document.getElementById('out-category').textContent = summary.industry ?? summary.category ?? '—';
       document.getElementById('out-ai').textContent = summary.aiContribution ?? '—';
       document.getElementById('out-human').textContent = summary.humanContribution ?? '—';
       document.getElementById('out-source').textContent = `Source: ${latestReport.name} — ${latestReport.department}`;
 
-      // Yearly projection
+      // Yearly projection with breakdown text moved here
       const yp = summary.yearlyProjection;
       if (yp) {
         const ypEl = document.getElementById('out-yearly-projection');
         if (ypEl) {
           ypEl.innerHTML = `
+            ${summary.projectedValueBreakdown ? `<div style="font-family:'Inter',sans-serif;font-size:0.78rem;color:var(--muted);margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);">${summary.projectedValueBreakdown}</div>` : ''}
             <div class="yearly-row"><span class="yearly-label">Year 1</span><span class="yearly-value">${yp.year1?.value || '—'}</span><span class="yearly-desc">${yp.year1?.description || ''}</span></div>
             <div class="yearly-row"><span class="yearly-label">Year 2</span><span class="yearly-value">${yp.year2?.value || '—'}</span><span class="yearly-desc">${yp.year2?.description || ''}</span></div>
             <div class="yearly-row"><span class="yearly-label">Year 3</span><span class="yearly-value">${yp.year3?.value || '—'}</span><span class="yearly-desc">${yp.year3?.description || ''}</span></div>
@@ -2728,13 +2741,14 @@
         }
       }
 
-      // Analogues and drivers
+      // Analogues
       const analoguesEl = document.getElementById('out-analogues');
       if (analoguesEl && summary.analogues?.length) {
         analoguesEl.innerHTML = summary.analogues.map(a => `<div class="analogue-item">— ${a}</div>`).join('');
         analoguesEl.style.display = 'block';
       }
 
+      // Main Drivers
       const driversEl = document.getElementById('out-drivers');
       if (driversEl && summary.mainDrivers?.length) {
         driversEl.innerHTML = summary.mainDrivers.map(d => `<span class="driver-tag">${d}</span>`).join('');
