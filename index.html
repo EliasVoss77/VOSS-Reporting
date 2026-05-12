@@ -2077,14 +2077,6 @@
     document.getElementById('app-screen').style.display = 'block';
   }
 
-  function setupUserUI() {
-    const email = currentUser.email;
-    const name = currentUser.user_metadata?.full_name || email;
-    const initials = name.charAt(0).toUpperCase();
-    document.getElementById('user-email').textContent = email;
-    document.getElementById('user-avatar').textContent = initials;
-  }
-
   // ─── SHARE LINK FETCHER ───
   let parsedConversations = [];
 
@@ -2380,14 +2372,13 @@
 
   async function handleSignOut() {
     try { await sb.auth.signOut(); } catch(e) {}
-    // Clear plan cache
-    Object.keys(localStorage).forEach(k => {
-      if (k.includes('supabase') || k.includes('sb-') || k.includes('voss_plan_')) localStorage.removeItem(k);
-    });
-    Object.keys(sessionStorage).forEach(k => {
-      if (k.includes('supabase') || k.includes('sb-')) sessionStorage.removeItem(k);
-    });
-    window.location.href = window.location.origin + window.location.pathname;
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (k) localStorage.removeItem(k);
+      }
+    } catch(e) {}
+    window.location.reload();
   }
 
   // ─── SIDEBAR ───
@@ -2413,52 +2404,37 @@
   const FREE_LIMIT = 5;
   const UPGRADE_URL = 'https://vossintel.lemonsqueezy.com/checkout/buy/41493af2-e6e6-4d54-91a5-bd506b23fcf8';
 
-  // Apply pro UI immediately — don't wait for auth
-  document.addEventListener('DOMContentLoaded', () => {
-    updatePlanUI();
-  });
+  const PRO_EMAILS = ['eliasvoss77@gmail.com', 'eliasvoss77@protonmail.com'];
 
   async function loadUserPlan() {
     if (!currentUser) return;
 
-    // Only use cache if it says pro — never cache free to avoid getting stuck
-    const cached = localStorage.getItem('voss_plan_' + currentUser.id);
-    if (cached === 'pro') { userPlan = 'pro'; updatePlanUI(); }
+    // Owner always pro — no DB check needed
+    if (PRO_EMAILS.includes(currentUser.email)) {
+      userPlan = 'pro';
+      updatePlanUI();
+      return;
+    }
 
+    // Try Supabase
     try {
-      const { data, error } = await sb
+      const { data } = await sb
         .from('profiles')
         .select('plan, report_count_today, report_count_reset')
         .eq('id', currentUser.id)
         .single();
 
-      if (error) {
-        const { data: b } = await sb.from('profiles').select('plan').eq('id', currentUser.id).single();
-        userPlan = b?.plan || 'free';
-      } else {
-        userPlan = data?.plan || 'free';
+      if (data) {
+        userPlan = data.plan || 'free';
         const today = new Date().toISOString().split('T')[0];
-        if (data?.report_count_reset && data.report_count_reset !== today) {
+        if (data.report_count_reset !== today) {
           reportsToday = 0;
-          sb.from('profiles').update({ report_count_today: 0, report_count_reset: today }).eq('id', currentUser.id).then(() => {}).catch(() => {});
         } else {
-          reportsToday = data?.report_count_today || 0;
+          reportsToday = data.report_count_today || 0;
         }
       }
     } catch (e) {
-      // On error only fall back to pro cache, never force free
-      if (cached === 'pro') userPlan = 'pro';
-    }
-
-    // Owner accounts always Pro
-    if (currentUser.email === 'eliasvoss77@gmail.com' ||
-        currentUser.email === 'eliasvoss77@protonmail.com') userPlan = 'pro';
-
-    // Only cache pro status, never cache free
-    if (userPlan === 'pro') {
-      localStorage.setItem('voss_plan_' + currentUser.id, 'pro');
-    } else {
-      localStorage.removeItem('voss_plan_' + currentUser.id);
+      userPlan = 'free';
     }
 
     updatePlanUI();
