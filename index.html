@@ -2433,9 +2433,9 @@
   async function loadUserPlan() {
     if (!currentUser) return;
 
-    // Instantly apply cached plan to prevent flash of free on hard refresh
+    // Only use cache if it says pro — never cache free to avoid getting stuck
     const cached = localStorage.getItem('voss_plan_' + currentUser.id);
-    if (cached) { userPlan = cached; updatePlanUI(); }
+    if (cached === 'pro') { userPlan = 'pro'; updatePlanUI(); }
 
     try {
       const { data, error } = await sb
@@ -2446,7 +2446,7 @@
 
       if (error) {
         const { data: b } = await sb.from('profiles').select('plan').eq('id', currentUser.id).single();
-        userPlan = b?.plan || cached || 'free';
+        userPlan = b?.plan || 'free';
       } else {
         userPlan = data?.plan || 'free';
         const today = new Date().toISOString().split('T')[0];
@@ -2458,15 +2458,20 @@
         }
       }
     } catch (e) {
-      userPlan = cached || 'free';
+      // On error only fall back to pro cache, never force free
+      if (cached === 'pro') userPlan = 'pro';
     }
 
     // Owner accounts always Pro
     if (currentUser.email === 'eliasvoss77@gmail.com' ||
         currentUser.email === 'eliasvoss77@protonmail.com') userPlan = 'pro';
 
-    // Cache plan so hard refresh doesn't flash free tier
-    localStorage.setItem('voss_plan_' + currentUser.id, userPlan);
+    // Only cache pro status, never cache free
+    if (userPlan === 'pro') {
+      localStorage.setItem('voss_plan_' + currentUser.id, 'pro');
+    } else {
+      localStorage.removeItem('voss_plan_' + currentUser.id);
+    }
 
     updatePlanUI();
   }
