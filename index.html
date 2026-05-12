@@ -852,6 +852,80 @@
     margin-bottom: 10px;
   }
 
+  /* ─── ATTRIBUTION BREAKDOWN ─── */
+  .attribution-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .attr-row {
+    display: grid;
+    grid-template-columns: 160px 1fr 36px;
+    align-items: center;
+    gap: 10px;
+  }
+
+  @media (max-width: 600px) {
+    .attr-row { grid-template-columns: 120px 1fr 32px; }
+  }
+
+  .attr-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .attr-track {
+    height: 6px;
+    background: var(--surface3);
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .attr-fill-human {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, var(--accent), #00cc6a);
+    transition: width 0.8s ease;
+  }
+
+  .attr-fill-ai {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, var(--accent2), #0099cc);
+    transition: width 0.8s ease;
+    position: absolute;
+    right: 0;
+    top: 0;
+  }
+
+  .attr-pct {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    text-align: right;
+  }
+
+  .attribution-rationale {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem;
+    color: var(--muted);
+    font-style: italic;
+    line-height: 1.5;
+    padding: 8px 12px;
+    background: var(--surface2);
+    border-radius: var(--radius-sm);
+    border-left: 2px solid var(--border-light);
+    margin-top: 6px;
+  }
+
   /* ─── YEARLY PROJECTION ─── */
   .yearly-row {
     display: grid;
@@ -1735,8 +1809,20 @@
             <div class="stat-box"><div class="stat-label">Industry</div><div class="stat-value blue" style="font-size:0.85rem;" id="out-category">—</div></div>
           </div>
           <div class="contrib-row">
-            <div class="contrib-box"><div class="stat-label">AI Contribution</div><div class="stat-value" id="out-ai">—</div></div>
-            <div class="contrib-box"><div class="stat-label">Human Contribution</div><div class="stat-value blue" id="out-human">—</div></div>
+            <div class="contrib-box">
+              <div class="stat-label">Human Contribution</div>
+              <div class="stat-value" id="out-human">—</div>
+            </div>
+            <div class="contrib-box">
+              <div class="stat-label">AI Contribution</div>
+              <div class="stat-value blue" id="out-ai">—</div>
+            </div>
+          </div>
+
+          <!-- Attribution Breakdown -->
+          <div id="out-attribution" style="display:none; margin-top:14px;">
+            <div class="attribution-bars" id="out-attribution-bars"></div>
+            <div class="attribution-rationale" id="out-attribution-rationale"></div>
           </div>
           <div class="analysis-source" id="out-source"></div>
 
@@ -2563,6 +2649,7 @@
     document.getElementById('out-category').textContent = r.category ?? '—';
     document.getElementById('out-ai').textContent = r.ai_contribution ?? '—';
     document.getElementById('out-human').textContent = r.human_contribution ?? '—';
+    document.getElementById('out-attribution').style.display = 'none';
     document.getElementById('out-source').textContent = `Source: ${r.name} — ${r.department}`;
     document.getElementById('section-summary').style.display = 'block';
     document.getElementById('section-calculator').style.display = 'block';
@@ -2709,8 +2796,42 @@
       }
 
       document.getElementById('out-category').textContent = summary.industry ?? summary.category ?? '—';
-      document.getElementById('out-ai').textContent = summary.aiContribution ?? '—';
-      document.getElementById('out-human').textContent = summary.humanContribution ?? '—';
+      // Attribution
+      const attrData = summary.attribution;
+      if (attrData) {
+        document.getElementById('out-human').textContent = (attrData.humanContribution || 0) + '%';
+        document.getElementById('out-ai').textContent = (attrData.aiContribution || 0) + '%';
+
+        const bk = attrData.breakdown || {};
+        const factors = [
+          { label: 'Direction & Strategy', human: bk.directionAndStrategy ?? 50 },
+          { label: 'Core Ideas & Insights', human: bk.coreIdeasAndInsights ?? 50 },
+          { label: 'Execution & Elaboration', human: bk.executionAndElaboration ?? 30 },
+          { label: 'Refinement & Judgment', human: bk.refinementAndJudgment ?? 60 },
+          { label: 'Contextual Knowledge', human: bk.contextualKnowledge ?? 70 },
+        ];
+
+        const barsEl = document.getElementById('out-attribution-bars');
+        barsEl.innerHTML = factors.map(f => `
+          <div class="attr-row">
+            <span class="attr-label">${f.label}</span>
+            <div class="attr-track">
+              <div class="attr-fill-human" style="width:${f.human}%"></div>
+              <div class="attr-fill-ai" style="width:${100 - f.human}%"></div>
+            </div>
+            <span class="attr-pct">${f.human}%</span>
+          </div>
+        `).join('');
+
+        if (attrData.rationale) {
+          document.getElementById('out-attribution-rationale').textContent = '"' + attrData.rationale + '"';
+        }
+
+        document.getElementById('out-attribution').style.display = 'block';
+      } else {
+        document.getElementById('out-human').textContent = summary.humanContribution ?? '—';
+        document.getElementById('out-ai').textContent = summary.aiContribution ?? '—';
+      }
       document.getElementById('out-source').textContent = `Source: ${latestReport.name} — ${latestReport.department}`;
 
       // Yearly projection with breakdown text moved here
@@ -2792,8 +2913,9 @@
       }
 
       // Wire calculator with report data
-      const aiPct = parseFloat((summary.aiContribution || '85%').replace('%','')) / 100;
-      calcAiPct = isNaN(aiPct) ? 0.85 : aiPct;
+      const attr = summary.attribution || {};
+      const aiPct = (attr.aiContribution || parseFloat((summary.aiContribution || '50').replace('%', ''))) / 100;
+      calcAiPct = isNaN(aiPct) ? 0.5 : aiPct;
 
       // Section 3 — store raw items FIRST then recalculate
       rawActionItems = actionItems;
@@ -2824,11 +2946,11 @@
           user_id: currentUser.id,
           name: latestReport.name,
           department: latestReport.department,
-          category: summary.category || 'Uncategorized',
+          category: summary.industry || summary.category || 'Uncategorized',
           hours_saved: summary.hoursSaved || 0,
           projected_value: summary.projectedBusinessValue || '$0',
-          ai_contribution: summary.aiContribution || '0%',
-          human_contribution: summary.humanContribution || '0%',
+          ai_contribution: (attr.aiContribution || summary.aiContribution || '0') + '%',
+          human_contribution: (attr.humanContribution || summary.humanContribution || '0') + '%',
           chat_recap: chatRecap,
           action_items: actionItems,
           chat_value: summary.chatValue || '$0'
@@ -2840,8 +2962,7 @@
           await incrementReportCount();
           loadReportHistory();
           setStatus('✅ Analysis complete — saved to your profile ✓', 'success');
-        }
-      } else {
+        }      } else {
         setStatus('Analysis complete', 'success');
       }
 
