@@ -2067,16 +2067,6 @@
   });
 
 
-  sb.auth.onAuthStateChange((event, session) => {
-    if (session?.user) {
-      currentUser = session.user;
-      showApp();
-    } else {
-      currentUser = null;
-      showAuth();
-    }
-  });
-
   function showAuth() {
     document.getElementById('auth-screen').style.display = 'flex';
     document.getElementById('app-screen').style.display = 'none';
@@ -2085,8 +2075,6 @@
   function showApp() {
     document.getElementById('auth-screen').style.display = 'none';
     document.getElementById('app-screen').style.display = 'block';
-    setupUserUI();
-    loadReportHistory();
   }
 
   function setupUserUI() {
