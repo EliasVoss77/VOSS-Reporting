@@ -568,6 +568,18 @@
     outline: none;
   }
 
+  /* Fix browser autofill white background override */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 100px var(--surface2) inset !important;
+    -webkit-text-fill-color: var(--text) !important;
+    caret-color: var(--text);
+    border-color: var(--border) !important;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+
   input::placeholder, textarea::placeholder { color: var(--muted); font-size: 0.875rem; }
   input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,229,122,0.08); }
   textarea { resize: vertical; min-height: 120px; margin-bottom: 12px; line-height: 1.6; }
@@ -852,7 +864,35 @@
     margin-bottom: 10px;
   }
 
-  /* ─── ATTRIBUTION BREAKDOWN ─── */
+  /* ─── UPLOAD SCANNING ANIMATION ─── */
+  @keyframes scanDots {
+    0%   { content: '⏳ Scanning .'; }
+    25%  { content: '⏳ Scanning ..'; }
+    50%  { content: '⏳ Scanning ...'; }
+    75%  { content: '⏳ Scanning ..'; }
+    100% { content: '⏳ Scanning .'; }
+  }
+
+  .upload-scanning {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--accent2);
+    animation: none;
+  }
+
+  @keyframes dotPulse {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+  }
+
+  .scan-dot {
+    display: inline-block;
+    animation: dotPulse 1.2s ease infinite;
+    color: var(--accent2);
+  }
+
+  .scan-dot:nth-child(2) { animation-delay: 0.2s; }
+  .scan-dot:nth-child(3) { animation-delay: 0.4s; }
   .attribution-bars {
     display: flex;
     flex-direction: column;
@@ -1656,11 +1696,13 @@
 
     <!-- Login Form -->
     <div id="login-form" class="auth-form">
-      <input type="email" id="login-email" placeholder="Email address" />
-      <input type="password" id="login-password" placeholder="Password" />
+      <input type="email" id="login-email" placeholder="Email address"
+        onkeydown="if(event.key==='Enter')handleLogin()" />
+      <input type="password" id="login-password" placeholder="Password"
+        onkeydown="if(event.key==='Enter')handleLogin()" />
       <div id="login-message" class="auth-message"></div>
       <button class="auth-btn" onclick="handleLogin()">⚡ Sign In</button>
-      <button onclick="handleForgotPassword()" style="background:transparent;border:none;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:0.72rem;cursor:pointer;letter-spacing:0.05em;text-align:center;margin-top:4px;" type="button">Forgot password?</button>
+      <button onclick="handleForgotPassword()" style="background:transparent;border:none;color:var(--muted);font-family:'Inter',sans-serif;font-size:0.78rem;cursor:pointer;text-align:center;margin-top:4px;padding:4px;" type="button">Forgot password?</button>
     </div>
 
     <!-- Signup Form -->
@@ -2240,34 +2282,38 @@
     if (file) processFile(file);
   }
 
+  function setScanStatus(msg) {
+    const status = document.getElementById('upload-status');
+    if (status) status.innerHTML = `${msg}<span class="scan-dot">.</span><span class="scan-dot">.</span><span class="scan-dot">.</span>`;
+  }
+
   async function processFile(file) {
     const zone = document.getElementById('upload-zone');
     const status = document.getElementById('upload-status');
     zone.className = 'upload-zone';
 
-    // Show upload progress in status bar too
     setStatus(`📎 Reading ${file.name}...`, 'loading');
-    status.textContent = `⏳ Reading ${file.name}...`;
+    setScanStatus('⏳ Reading file');
 
     try {
       const ext = file.name.split('.').pop().toLowerCase();
       let text = '';
 
       if (ext === 'pdf') {
-        setStatus('📄 Extracting text from PDF...', 'loading');
-        status.textContent = '📄 Extracting text from PDF — this may take a moment...';
+        setStatus('📄 Extracting PDF content...', 'loading');
+        setScanStatus('📄 Extracting PDF content');
         text = await extractPDF(file);
       } else if (ext === 'json') {
         setStatus('🗂️ Parsing conversation data...', 'loading');
-        status.textContent = '🗂️ Parsing conversation data...';
+        setScanStatus('🗂️ Parsing conversation data');
         text = await extractJSON(file);
       } else if (['txt', 'md'].includes(ext)) {
-        setStatus('📝 Reading file...', 'loading');
-        status.textContent = '📝 Reading file...';
+        setStatus('📝 Reading transcript...', 'loading');
+        setScanStatus('📝 Reading transcript');
         text = await file.text();
       } else if (ext === 'html') {
         setStatus('🌐 Processing HTML...', 'loading');
-        status.textContent = '🌐 Processing HTML...';
+        setScanStatus('🌐 Processing HTML');
         const raw = await file.text();
         const div = document.createElement('div');
         div.innerHTML = raw;
@@ -2280,12 +2326,12 @@
 
       document.getElementById('rep-issue').value = text.trim();
       zone.classList.add('success');
-      status.textContent = `✓ ${file.name} loaded — ${text.length.toLocaleString()} characters`;
-      setStatus(`✅ ${file.name} loaded — paste into submit or click VOSS Value Report`, 'success');
+      status.innerHTML = `✓ ${file.name} loaded — ${text.length.toLocaleString()} characters`;
+      setStatus(`✅ ${file.name} ready — click VOSS Value Report to analyze`, 'success');
 
     } catch (err) {
       zone.classList.add('error');
-      status.textContent = '✕ ' + err.message;
+      status.innerHTML = '✕ ' + err.message;
       setStatus('✕ Upload failed: ' + err.message, 'error');
     }
   }
@@ -2644,18 +2690,32 @@
 
     document.getElementById('out-hours').textContent = r.hours_saved ?? '—';
     document.getElementById('out-cost').textContent = r.chat_value || '—';
-    document.getElementById('out-projected').textContent = r.projected_value ?? '—';
-    document.getElementById('out-projected-breakdown').textContent = 'From saved report';
+
+    // Split projected value from timeframe
+    const projRaw = r.projected_value ?? '—';
+    const projParts = projRaw.match(/^(\$[\d,]+)\s*(.*)?$/);
+    if (projParts) {
+      document.getElementById('out-projected').textContent = projParts[1];
+      document.getElementById('out-projected-timeframe').textContent = projParts[2] || '';
+    } else {
+      document.getElementById('out-projected').textContent = projRaw;
+      document.getElementById('out-projected-timeframe').textContent = '';
+    }
+
     document.getElementById('out-category').textContent = r.category ?? '—';
     document.getElementById('out-ai').textContent = r.ai_contribution ?? '—';
     document.getElementById('out-human').textContent = r.human_contribution ?? '—';
     document.getElementById('out-attribution').style.display = 'none';
+    document.getElementById('out-yearly-projection').style.display = 'none';
+    document.getElementById('out-analogues').style.display = 'none';
+    document.getElementById('out-drivers').style.display = 'none';
     document.getElementById('out-source').textContent = `Source: ${r.name} — ${r.department}`;
     document.getElementById('section-summary').style.display = 'block';
     document.getElementById('section-calculator').style.display = 'block';
 
     document.getElementById('out-recap').textContent = r.chat_recap || '—';
     document.getElementById('section-recap').style.display = 'block';
+    document.getElementById('section-innovation').style.display = 'none';
 
     const actionsEl = document.getElementById('out-actions');
     actionsEl.innerHTML = '';
@@ -2666,6 +2726,7 @@
       actionsEl.innerHTML += buildActionItem(a, i, statusClass, '');
     });
     document.getElementById('section-actions').style.display = 'block';
+
     if (userPlan === 'pro') {
       document.getElementById('export-row').style.display = 'flex';
       document.getElementById('export-lock').style.display = 'none';
@@ -2676,7 +2737,7 @@
 
     if (window.innerWidth <= 768) toggleSidebar();
     window.scrollTo(0, 0);
-    setStatus('Report loaded from history', 'success');
+    setStatus('✅ Report loaded from history', 'success');
   }
 
   // ─── FORM & REPORT ───
