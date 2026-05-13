@@ -34,6 +34,16 @@
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
+  /* ─── GLOBAL SCROLLBARS ─── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+  ::-webkit-scrollbar-corner { background: var(--bg); }
+
+  /* Firefox */
+  * { scrollbar-width: thin; scrollbar-color: var(--border) var(--bg); }
+
   body {
     font-family: 'Inter', sans-serif;
     background: var(--bg);
@@ -325,8 +335,9 @@
   }
 
   .report-log::-webkit-scrollbar { width: 4px; }
-  .report-log::-webkit-scrollbar-track { background: transparent; }
+  .report-log::-webkit-scrollbar-track { background: var(--surface); }
   .report-log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .report-log::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
 
   .report-log-delete {
     background: transparent;
