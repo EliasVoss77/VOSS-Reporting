@@ -335,9 +335,8 @@
   }
 
   .report-log::-webkit-scrollbar { width: 4px; }
-  .report-log::-webkit-scrollbar-track { background: var(--surface); }
+  .report-log::-webkit-scrollbar-track { background: transparent; }
   .report-log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-  .report-log::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
 
   .report-log-delete {
     background: transparent;
@@ -1806,7 +1805,7 @@
             <div class="share-coming-soon">
               <span class="share-coming-icon">🔗</span>
               <span class="share-coming-text">One-click import via the VOSS Browser Extension — no copy/paste needed</span>
-              <span class="share-coming-badge">Coming Soon</span>
+              <span class="share-coming-badge" style="background:rgba(0,229,122,0.1);color:var(--accent);border-color:rgba(0,229,122,0.3);">✓ Available Now</span>
             </div>
 
             <!-- File Upload Zone -->
@@ -3212,6 +3211,74 @@
       userPlan = 'free';
       reportsToday = 0;
     }
+  });
+
+
+  // ─── VOSS EXTENSION RELAY ───────────────────────────────────────────────────
+  // Reads conversation data written by the browser extension and auto-fills form
+
+  function handleExtensionRelay(relay) {
+    if (!relay || !relay.conversation || relay.source !== 'extension') return;
+    if (Date.now() - relay.timestamp > 5 * 60 * 1000) {
+      localStorage.removeItem('voss_extension_relay');
+      return;
+    }
+
+    const applyRelay = () => {
+      const textarea = document.getElementById('rep-issue');
+      const nameField = document.getElementById('rep-name');
+      const deptField = document.getElementById('rep-department');
+      if (!textarea) return;
+
+      if (relay.conversation) textarea.value = relay.conversation;
+      if (relay.name && nameField) nameField.value = relay.name;
+      if (relay.department && deptField) deptField.value = relay.department;
+
+      const platformNames = {
+        claude: 'Claude', chatgpt: 'ChatGPT', gemini: 'Gemini',
+        copilot: 'Copilot', perplexity: 'Perplexity'
+      };
+      const platformLabel = platformNames[relay.platform] || relay.platform || 'AI platform';
+      setStatus('✅ Conversation imported from ' + platformLabel + ' — click VOSS Value Report to analyze', 'success');
+
+      const zone = document.getElementById('upload-zone');
+      const uploadStatus = document.getElementById('upload-status');
+      if (zone && uploadStatus) {
+        zone.classList.add('success');
+        uploadStatus.textContent = '✓ Imported from ' + platformLabel + ' via VOSS Extension — ' + relay.conversation.length.toLocaleString() + ' characters';
+      }
+
+      localStorage.removeItem('voss_extension_relay');
+      history.replaceState({}, '', window.location.pathname);
+    };
+
+    if (currentUser) {
+      applyRelay();
+    } else {
+      let attempts = 0;
+      const poll = setInterval(() => {
+        attempts++;
+        if (currentUser) { clearInterval(poll); applyRelay(); }
+        else if (attempts > 20) clearInterval(poll);
+      }, 500);
+    }
+  }
+
+  // Check for relay data on page load (set by extension before opening this tab)
+  (function checkRelayOnLoad() {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has('voss_import')) return;
+    setTimeout(() => {
+      try {
+        const raw = localStorage.getItem('voss_extension_relay');
+        if (raw) handleExtensionRelay(JSON.parse(raw));
+      } catch(e) { console.error('[VOSS] Relay parse error:', e); }
+    }, 800);
+  })();
+
+  // Also listen for the custom event fired by the background bridge
+  window.addEventListener('voss_extension_data', (e) => {
+    if (e.detail) handleExtensionRelay(e.detail);
   });
 
   function shareReport() {
