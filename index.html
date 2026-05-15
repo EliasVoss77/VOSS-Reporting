@@ -3219,9 +3219,15 @@
 
     if (currentUser) {
       // Check if account is pending deletion — block login
+      // Use maybeSingle() so missing rows return null instead of throwing
       try {
-        const { data: profile } = await sb.from('profiles').select('pending_deletion').eq('id', currentUser.id).single();
-        if (profile?.pending_deletion) {
+        const { data: profile, error: profileErr } = await sb
+          .from('profiles')
+          .select('pending_deletion')
+          .eq('id', currentUser.id)
+          .maybeSingle();
+        // Only block if we got a confirmed true — never block on error or null
+        if (!profileErr && profile?.pending_deletion === true) {
           await sb.auth.signOut();
           document.getElementById('auth-screen').style.display = 'flex';
           document.getElementById('app-screen').style.display = 'none';
@@ -3233,7 +3239,7 @@
           }
           return;
         }
-      } catch(e) { /* profile check failed — proceed normally */ }
+      } catch(e) { /* profile check failed — proceed normally, never block login on error */ }
 
       document.getElementById('auth-screen').style.display = 'none';
       document.getElementById('app-screen').style.display = 'block';
