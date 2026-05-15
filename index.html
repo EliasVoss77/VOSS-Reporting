@@ -2734,6 +2734,7 @@
       actionsEl.innerHTML += buildActionItem(a, i, statusClass, '');
     });
     document.getElementById('section-actions').style.display = 'block';
+    recalculate();
 
     if (userPlan === 'pro') {
       document.getElementById('export-row').style.display = 'flex';
