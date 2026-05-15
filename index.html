@@ -32,7 +32,7 @@
     --glow: 0 0 24px rgba(0,229,122,0.12);
   }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; scrollbar-width: thin; scrollbar-color: var(--border) var(--bg); }
 
   /* ─── GLOBAL SCROLLBARS ─── */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -40,9 +40,6 @@
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
   ::-webkit-scrollbar-corner { background: var(--bg); }
-
-  /* Firefox */
-  * { scrollbar-width: thin; scrollbar-color: var(--border) var(--bg); }
 
   body {
     font-family: 'Inter', sans-serif;
