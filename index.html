@@ -3208,7 +3208,33 @@
   // ─── AUTH STATE ───
   sb.auth.onAuthStateChange(async (event, session) => {
     currentUser = session?.user || null;
+
+    // Password recovery flow — user clicked reset link in email
+    if (event === 'PASSWORD_RECOVERY') {
+      document.getElementById('auth-screen').style.display = 'none';
+      document.getElementById('app-screen').style.display = 'block';
+      document.getElementById('set-password-modal').classList.add('open');
+      return;
+    }
+
     if (currentUser) {
+      // Check if account is pending deletion — block login
+      try {
+        const { data: profile } = await sb.from('profiles').select('pending_deletion').eq('id', currentUser.id).single();
+        if (profile?.pending_deletion) {
+          await sb.auth.signOut();
+          document.getElementById('auth-screen').style.display = 'flex';
+          document.getElementById('app-screen').style.display = 'none';
+          const msgEl = document.getElementById('login-message');
+          if (msgEl) {
+            msgEl.textContent = 'This account has been deleted. Contact service@vossintel.com if this was a mistake.';
+            msgEl.className = 'auth-message error';
+            msgEl.style.display = 'block';
+          }
+          return;
+        }
+      } catch(e) { /* profile check failed — proceed normally */ }
+
       document.getElementById('auth-screen').style.display = 'none';
       document.getElementById('app-screen').style.display = 'block';
       document.getElementById('app-screen').style.minHeight = '100vh';
@@ -3297,21 +3323,60 @@
       return;
     }
     try {
-      msgEl.textContent = 'Deleting account...';
-      // Delete all user reports
-      await sb.from('reports').delete().eq('user_id', currentUser.id);
-      // Delete profile row
-      await sb.from('profiles').delete().eq('id', currentUser.id);
-      // Delete auth user via Supabase (requires service role in prod — this triggers email confirmation)
-      const { error } = await sb.auth.admin?.deleteUser?.(currentUser.id);
-      // Sign out regardless
+      msgEl.textContent = 'Processing...';
+
+      // Step 1: Mark profile as pending_deletion in DB — blocks future logins
+      const { error: flagError } = await sb.from('profiles')
+        .update({ pending_deletion: true, deletion_requested_at: new Date().toISOString() })
+        .eq('id', currentUser.id);
+
+      if (flagError) throw new Error(flagError.message);
+
+      // Step 2: Call Cloudflare Worker to delete the Supabase auth user server-side
+      const response = await fetch(WORKER_URL + '/delete-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
+        body: JSON.stringify({ userId: currentUser.id })
+      });
+
+      // Step 3: Sign out client-side regardless of worker response
       await sb.auth.signOut();
-      alert('Your account has been deleted. Sorry to see you go.');
+      document.getElementById('profile-modal').classList.remove('open');
+      alert('Your account has been deleted. Sorry to see you go — your data will be retained for 30 days in case you change your mind. Contact service@vossintel.com to restore your account.');
       window.location.reload();
     } catch(e) {
-      // Even if admin delete fails, sign out and clear data
-      await sb.auth.signOut();
-      window.location.reload();
+      msgEl.textContent = '✕ ' + e.message;
+      // Still sign out even on error — pending_deletion flag blocks re-login
+      setTimeout(async () => {
+        await sb.auth.signOut();
+        window.location.reload();
+      }, 2000);
+    }
+  }
+
+  async function submitNewPassword() {
+    const pw = document.getElementById('new-password-input').value;
+    const pw2 = document.getElementById('new-password-confirm').value;
+    const msgEl = document.getElementById('set-password-msg');
+
+    if (pw.length < 8) {
+      msgEl.style.color = 'var(--danger)'; msgEl.textContent = 'Password must be at least 8 characters'; return;
+    }
+    if (pw !== pw2) {
+      msgEl.style.color = 'var(--danger)'; msgEl.textContent = 'Passwords do not match'; return;
+    }
+
+    msgEl.style.color = 'var(--accent2)'; msgEl.textContent = 'Updating...';
+    const { error } = await sb.auth.updateUser({ password: pw });
+    if (error) {
+      msgEl.style.color = 'var(--danger)'; msgEl.textContent = '✕ ' + error.message;
+    } else {
+      msgEl.style.color = 'var(--accent)'; msgEl.textContent = '✓ Password updated!';
+      setTimeout(() => {
+        document.getElementById('set-password-modal').classList.remove('open');
+        // Clear hash from URL
+        history.replaceState({}, '', window.location.pathname);
+      }, 1500);
     }
   }
 
@@ -3401,6 +3466,24 @@
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
   }
 </script>
+<!-- Set New Password Modal (shown after password reset link is clicked) -->
+<div class="modal-overlay" id="set-password-modal">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-title">// Set New Password</div>
+    <div class="modal-body">
+      <p style="margin-bottom:16px;color:var(--muted);font-size:0.85rem;line-height:1.6;">Enter your new password below. It must be at least 8 characters.</p>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <input type="password" id="new-password-input" placeholder="New password (min 8 characters)"
+          style="padding:11px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Inter',sans-serif;font-size:0.9rem;outline:none;">
+        <input type="password" id="new-password-confirm" placeholder="Confirm new password"
+          style="padding:11px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Inter',sans-serif;font-size:0.9rem;outline:none;">
+        <div id="set-password-msg" style="font-family:'JetBrains Mono',monospace;font-size:0.75rem;min-height:18px;text-align:center;"></div>
+        <button onclick="submitNewPassword()" style="padding:12px;background:var(--accent);color:#030a06;border:none;border-radius:var(--radius-sm);font-family:'Inter',sans-serif;font-size:0.9rem;font-weight:700;cursor:pointer;transition:all 0.18s;">Set New Password</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Profile & Account Modal -->
 <div class="modal-overlay" id="profile-modal">
   <div class="modal" style="max-width:480px;">
