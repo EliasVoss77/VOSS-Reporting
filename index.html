@@ -2564,15 +2564,15 @@
       return;
     }
 
-    // Try Supabase
+    // Try Supabase — maybeSingle never throws on missing row
     try {
-      const { data } = await sb
+      const { data, error } = await sb
         .from('profiles')
         .select('plan, report_count_today, report_count_reset')
         .eq('id', currentUser.id)
-        .single();
+        .maybeSingle();
 
-      if (data) {
+      if (!error && data) {
         userPlan = data.plan || 'free';
         const today = new Date().toISOString().split('T')[0];
         if (data.report_count_reset !== today) {
