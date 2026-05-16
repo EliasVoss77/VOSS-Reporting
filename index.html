@@ -3400,6 +3400,29 @@
     }
   });
 
+  // ─── PASSWORD RECOVERY DETECTION ───────────────────────────────────────────
+  // Detects Supabase recovery token in URL hash on page load
+  // Keeps onAuthStateChange completely untouched
+
+  (function checkPasswordRecovery() {
+    const hash = window.location.hash;
+    if (!hash.includes('type=recovery')) return;
+
+    // Recovery token present — wait for Supabase to process it
+    // then show the set-password modal
+    const showRecoveryModal = () => {
+      const modal = document.getElementById('set-password-modal');
+      if (modal) {
+        modal.classList.add('open');
+        // Clear the hash so refresh doesn't re-trigger
+        history.replaceState({}, '', window.location.pathname);
+      }
+    };
+
+    // Give Supabase ~1s to process the token and fire auth state change
+    setTimeout(showRecoveryModal, 1000);
+  })();
+
   // ─── VOSS EXTENSION RELAY ───────────────────────────────────────────────────
   // Reads conversation written by the browser extension and auto-fills the form
 
