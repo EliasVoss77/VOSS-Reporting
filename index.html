@@ -2091,9 +2091,9 @@
               </div>
             </div>
 
-            <div class="calc-pro-teaser">
+            <div class="calc-pro-teaser" id="calc-pro-teaser">
               <div class="calc-pro-text">🔒 Pro — Save rate presets, team templates, time horizon modeling</div>
-              <button class="calc-pro-btn" onclick="alert('Pro plan coming soon!')">Upgrade to Pro</button>
+              <button class="calc-pro-btn" onclick="showUpgradePrompt()">Upgrade to Pro</button>
             </div>
           </div>
         </div>
@@ -2776,6 +2776,8 @@
       if (historySection) historySection.style.cssText = 'display:block!important';
       // Export shown when report is ready — handled by generateAiReport
       if (exportLock) exportLock.style.cssText = 'display:none!important';
+      const calcTeaser = document.getElementById('calc-pro-teaser');
+      if (calcTeaser) calcTeaser.style.cssText = 'display:none!important';
     } else {
       const remaining = Math.max(0, FREE_LIMIT - reportsToday);
       if (planEl) {
