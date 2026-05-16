@@ -1934,6 +1934,7 @@
           <a href="https://vossintel.com/privacy.html" target="_blank">Privacy</a>
           <a href="mailto:service@vossintel.com">Contact</a>
         </div>
+        <button class="signout-btn" onclick="openProfileModal()" style="margin-bottom:6px;border-color:var(--border-light);color:var(--text-secondary);">⚙ Manage Account</button>
         <button class="signout-btn" onclick="handleSignOut()">↩ Sign Out</button>
       </div>
     </aside>
@@ -3428,6 +3429,146 @@
   window.addEventListener('voss_extension_data', (e) => {
     if (e.detail) handleExtensionRelay(e.detail);
   });
+
+
+  // ─── PROFILE & ACCOUNT MANAGEMENT ───
+
+  function openProfileModal() {
+    const modal = document.getElementById('profile-modal');
+    if (!modal) return;
+    const nameEl = document.getElementById('profile-name');
+    const emailEl = document.getElementById('profile-email');
+    if (nameEl && currentUser) nameEl.value = currentUser.user_metadata?.full_name || '';
+    if (emailEl && currentUser) emailEl.value = currentUser.email || '';
+    ['profile-save-msg','profile-reset-msg','profile-delete-msg'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = '';
+    });
+    const confirmRow = document.getElementById('delete-confirm-row');
+    const deleteBtn = document.getElementById('delete-account-btn');
+    if (confirmRow) confirmRow.style.display = 'none';
+    if (deleteBtn) deleteBtn.style.display = 'block';
+    modal.classList.add('open');
+  }
+
+  function closeProfileModal() {
+    const modal = document.getElementById('profile-modal');
+    if (modal) modal.classList.remove('open');
+  }
+
+  async function saveProfile() {
+    const name = document.getElementById('profile-name').value.trim();
+    const msgEl = document.getElementById('profile-save-msg');
+    if (!name) {
+      msgEl.style.color = 'var(--danger)';
+      msgEl.textContent = 'Name cannot be empty';
+      return;
+    }
+    try {
+      const { error: authError } = await sb.auth.updateUser({ data: { full_name: name } });
+      const { error: dbError } = await sb.from('profiles').update({ full_name: name }).eq('id', currentUser.id);
+      if (authError || dbError) throw new Error((authError || dbError).message);
+      msgEl.style.color = 'var(--accent)';
+      msgEl.textContent = '✓ Profile updated';
+      const avatar = document.getElementById('user-avatar');
+      if (avatar) avatar.textContent = name[0].toUpperCase();
+    } catch(e) {
+      msgEl.style.color = 'var(--danger)';
+      msgEl.textContent = '✕ ' + e.message;
+    }
+  }
+
+  async function handlePasswordReset() {
+    const msgEl = document.getElementById('profile-reset-msg');
+    if (!currentUser?.email) return;
+    const { error } = await sb.auth.resetPasswordForEmail(currentUser.email, {
+      redirectTo: 'https://app.vossintel.com'
+    });
+    if (error) {
+      msgEl.style.color = 'var(--danger)';
+      msgEl.textContent = '✕ ' + error.message;
+    } else {
+      msgEl.style.color = 'var(--accent)';
+      msgEl.textContent = '✓ Reset email sent — check your inbox';
+    }
+  }
+
+  function showDeleteConfirm() {
+    const confirmRow = document.getElementById('delete-confirm-row');
+    const deleteBtn = document.getElementById('delete-account-btn');
+    if (confirmRow) confirmRow.style.display = 'flex';
+    if (deleteBtn) deleteBtn.style.display = 'none';
+    const input = document.getElementById('delete-confirm-input');
+    if (input) { input.value = ''; input.focus(); }
+  }
+
+  async function confirmDeleteAccount() {
+    const input = document.getElementById('delete-confirm-input').value.trim();
+    const msgEl = document.getElementById('profile-delete-msg');
+    if (input !== 'DELETE') {
+      msgEl.textContent = 'Type DELETE exactly to confirm';
+      return;
+    }
+    try {
+      msgEl.textContent = 'Processing...';
+
+      // Flag account as pending deletion — blocks re-login
+      await sb.from('profiles').update({
+        pending_deletion: true,
+        deletion_requested_at: new Date().toISOString()
+      }).eq('id', currentUser.id);
+
+      // Call worker to hard-delete the auth user server-side
+      await fetch(WORKER_URL + '/delete-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
+        body: JSON.stringify({ userId: currentUser.id })
+      });
+
+      // Sign out client-side
+      await sb.auth.signOut();
+      closeProfileModal();
+      alert('Your account has been deleted. Your data will be retained for 30 days — contact service@vossintel.com to restore it.');
+      window.location.reload();
+
+    } catch(e) {
+      msgEl.textContent = '✕ ' + e.message;
+      setTimeout(async () => {
+        await sb.auth.signOut();
+        window.location.reload();
+      }, 2000);
+    }
+  }
+
+  async function submitNewPassword() {
+    const pw = document.getElementById('new-password-input').value;
+    const pw2 = document.getElementById('new-password-confirm').value;
+    const msgEl = document.getElementById('set-password-msg');
+    if (pw.length < 8) {
+      msgEl.style.color = 'var(--danger)';
+      msgEl.textContent = 'Password must be at least 8 characters';
+      return;
+    }
+    if (pw !== pw2) {
+      msgEl.style.color = 'var(--danger)';
+      msgEl.textContent = 'Passwords do not match';
+      return;
+    }
+    msgEl.style.color = 'var(--accent2)';
+    msgEl.textContent = 'Updating...';
+    const { error } = await sb.auth.updateUser({ password: pw });
+    if (error) {
+      msgEl.style.color = 'var(--danger)';
+      msgEl.textContent = '✕ ' + error.message;
+    } else {
+      msgEl.style.color = 'var(--accent)';
+      msgEl.textContent = '✓ Password updated successfully!';
+      setTimeout(() => {
+        document.getElementById('set-password-modal').classList.remove('open');
+        history.replaceState({}, '', window.location.pathname);
+      }, 1500);
+    }
+  }
 
   function shareReport() {
     const source = document.getElementById('out-source').textContent || 'VOSS Report';
