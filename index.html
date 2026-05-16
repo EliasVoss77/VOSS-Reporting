@@ -1683,11 +1683,60 @@
     .stat-value.blue, .action-rationale, .action-hours, .action-value { color: #333 !important; }
   }
 
+  
+  /* ─── PATENT TICKER ─── */
+  .patent-ticker {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    padding: 8px 0;
+    z-index: 999;
+  }
+
+  .patent-ticker-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .patent-ticker-item {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    color: var(--accent);
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .patent-ticker-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+    animation: pulse 2s ease infinite;
+  }
+
   @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 </style>
 </head>
 <body>
+
+
+<!-- ─── PATENT TICKER ─── -->
+<div class="patent-ticker" id="patent-ticker">
+  <div class="patent-ticker-inner">
+    <span class="patent-ticker-item"><span class="patent-ticker-dot"></span>Patents Pending — VOSS Intel's Technologies Are Proprietary and Legally Protected.</span>
+  </div>
+</div>
 
 <!-- ─── AUTH SCREEN ─── -->
 <div id="auth-screen">
@@ -3199,6 +3248,7 @@
     if (currentUser) {
       document.getElementById('auth-screen').style.display = 'none';
       document.getElementById('app-screen').style.display = 'block';
+      const pt = document.getElementById('patent-ticker'); if (pt) pt.style.display = 'none';
       document.getElementById('app-screen').style.minHeight = '100vh';
       document.getElementById('user-email').textContent = currentUser.email;
       document.getElementById('user-avatar').textContent = (currentUser.email?.[0] || '?').toUpperCase();
@@ -3209,6 +3259,7 @@
       document.getElementById('app-screen').style.display = 'none';
       userPlan = 'free';
       reportsToday = 0;
+      const pt2 = document.getElementById('patent-ticker'); if (pt2) pt2.style.display = 'block';
     }
   });
 
