@@ -2710,15 +2710,31 @@
       return;
     }
 
-    // Try Supabase
+    // Try Supabase — fetch plan + deletion status in one call
     try {
-      const { data } = await sb
+      const { data, error } = await sb
         .from('profiles')
-        .select('plan, report_count_today, report_count_reset')
+        .select('plan, report_count_today, report_count_reset, pending_deletion')
         .eq('id', currentUser.id)
-        .single();
+        .maybeSingle();
 
-      if (data) {
+      if (!error && data) {
+        // Check pending_deletion — sign out cleanly after app loads
+        if (data.pending_deletion === true) {
+          await sb.auth.signOut();
+          document.getElementById('auth-screen').style.display = 'flex';
+          document.getElementById('app-screen').style.display = 'none';
+          const pt = document.getElementById('patent-ticker');
+          if (pt) pt.style.display = 'block';
+          const msgEl = document.getElementById('login-message');
+          if (msgEl) {
+            msgEl.textContent = 'This account has been deleted. Contact service@vossintel.com to restore it.';
+            msgEl.className = 'auth-message error';
+            msgEl.style.display = 'block';
+          }
+          return;
+        }
+
         userPlan = data.plan || 'free';
         const today = new Date().toISOString().split('T')[0];
         if (data.report_count_reset !== today) {
