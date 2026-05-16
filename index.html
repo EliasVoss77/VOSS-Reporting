@@ -3350,7 +3350,38 @@
   // ─── AUTH STATE ───
   sb.auth.onAuthStateChange(async (event, session) => {
     currentUser = session?.user || null;
+
+    // Handle password recovery link click
+    if (event === 'PASSWORD_RECOVERY') {
+      document.getElementById('auth-screen').style.display = 'none';
+      document.getElementById('app-screen').style.display = 'block';
+      const spModal = document.getElementById('set-password-modal');
+      if (spModal) spModal.classList.add('open');
+      return;
+    }
+
     if (currentUser) {
+      // Check pending_deletion — only block if we get confirmed true, never on error
+      try {
+        const { data: profile, error: profileErr } = await sb
+          .from('profiles')
+          .select('pending_deletion')
+          .eq('id', currentUser.id)
+          .maybeSingle();
+        if (!profileErr && profile?.pending_deletion === true) {
+          await sb.auth.signOut();
+          document.getElementById('auth-screen').style.display = 'flex';
+          document.getElementById('app-screen').style.display = 'none';
+          const msgEl = document.getElementById('login-message');
+          if (msgEl) {
+            msgEl.textContent = 'This account has been deleted. Contact service@vossintel.com to restore it.';
+            msgEl.className = 'auth-message error';
+            msgEl.style.display = 'block';
+          }
+          return;
+        }
+      } catch(e) { /* never block login on error */ }
+
       document.getElementById('auth-screen').style.display = 'none';
       document.getElementById('app-screen').style.display = 'block';
       const pt = document.getElementById('patent-ticker'); if (pt) pt.style.display = 'none';
