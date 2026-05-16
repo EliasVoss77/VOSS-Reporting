@@ -3453,7 +3453,8 @@
       if (relay.department && deptField) deptField.value = relay.department;
       const platformNames = {
         claude: 'Claude', chatgpt: 'ChatGPT', gemini: 'Gemini',
-        copilot: 'Copilot', perplexity: 'Perplexity', grok: 'Grok', word: 'Microsoft Word'
+        copilot: 'Copilot', perplexity: 'Perplexity', grok: 'Grok', word: 'Microsoft Word',
+        office365: 'Microsoft 365', suno: 'Suno', quickbooks: 'QuickBooks'
       };
       const platformLabel = platformNames[relay.platform] || relay.platform || 'AI platform';
       setStatus('✅ Conversation imported from ' + platformLabel + ' — click VOSS Value Report to analyze', 'success');
