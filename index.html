@@ -1724,6 +1724,109 @@
     animation: pulse 2s ease infinite;
   }
 
+
+  /* ─── PROFILE MODAL STYLES ─── */
+  .profile-section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .profile-input {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s;
+    margin-bottom: 8px;
+  }
+
+  .profile-input:focus { border-color: var(--accent); }
+  .profile-input:disabled { color: var(--muted); cursor: not-allowed; }
+
+  .profile-action-btn {
+    width: 100%;
+    padding: 10px;
+    border-radius: var(--radius-sm);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s;
+    margin-bottom: 6px;
+  }
+
+  .profile-save-btn {
+    background: var(--accent);
+    color: #030a06;
+    border: none;
+  }
+
+  .profile-save-btn:hover { background: #00f285; }
+
+  .profile-reset-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  .profile-reset-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  .profile-delete-btn {
+    background: transparent;
+    border: 1px solid rgba(248,113,113,0.3);
+    color: var(--danger);
+  }
+
+  .profile-delete-btn:hover { background: rgba(248,113,113,0.08); border-color: var(--danger); }
+
+  .profile-confirm-btn {
+    background: rgba(248,113,113,0.15);
+    border: 1px solid var(--danger);
+    color: var(--danger);
+  }
+
+  .profile-confirm-btn:hover { background: rgba(248,113,113,0.25); }
+
+  .profile-msg {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    min-height: 18px;
+    text-align: center;
+    margin-top: 4px;
+    letter-spacing: 0.05em;
+  }
+
+  .profile-divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 18px 0;
+  }
+
+  .danger-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    color: var(--danger);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .danger-note {
+    font-size: 0.8rem;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 12px;
+  }
+
   @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 </style>
@@ -3345,6 +3448,59 @@
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
   }
 </script>
+
+<!-- Set New Password Modal -->
+<div class="modal-overlay" id="set-password-modal">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-title">// Set New Password</div>
+    <div class="modal-body">
+      <p style="margin-bottom:16px;color:var(--muted);font-size:0.85rem;line-height:1.6;">Enter your new password below. It must be at least 8 characters.</p>
+      <input type="password" id="new-password-input" placeholder="New password (min 8 characters)" class="profile-input">
+      <input type="password" id="new-password-confirm" placeholder="Confirm new password" class="profile-input">
+      <div id="set-password-msg" class="profile-msg"></div>
+      <button onclick="submitNewPassword()" class="profile-action-btn profile-save-btn" style="margin-top:8px;">Set New Password</button>
+    </div>
+  </div>
+</div>
+
+<!-- Profile & Account Modal -->
+<div class="modal-overlay" id="profile-modal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-title">// Account & Profile</div>
+    <div class="modal-body">
+
+      <!-- Profile Info -->
+      <div class="profile-section-label">Profile Info</div>
+      <input type="text" id="profile-name" placeholder="Full name" class="profile-input">
+      <input type="email" id="profile-email" placeholder="Email address" class="profile-input" disabled>
+      <div style="font-size:0.72rem;color:var(--muted);margin-bottom:4px;">Email cannot be changed — contact service@vossintel.com</div>
+      <button onclick="saveProfile()" class="profile-action-btn profile-save-btn">Save Changes</button>
+      <div id="profile-save-msg" class="profile-msg"></div>
+
+      <hr class="profile-divider">
+
+      <!-- Password -->
+      <div class="profile-section-label">Password</div>
+      <button onclick="handlePasswordReset()" class="profile-action-btn profile-reset-btn">Send Password Reset Email</button>
+      <div id="profile-reset-msg" class="profile-msg"></div>
+
+      <hr class="profile-divider">
+
+      <!-- Danger Zone -->
+      <div class="danger-label">Danger Zone</div>
+      <div class="danger-note">Deleting your account is permanent. Your data will be retained for 30 days — contact service@vossintel.com within that window to restore it.</div>
+      <div id="delete-confirm-row" style="display:none;flex-direction:column;gap:8px;margin-bottom:8px;">
+        <input type="text" id="delete-confirm-input" placeholder="Type DELETE to confirm" class="profile-input" style="background:rgba(248,113,113,0.05);border-color:rgba(248,113,113,0.3);font-family:'JetBrains Mono',monospace;">
+        <button onclick="confirmDeleteAccount()" class="profile-action-btn profile-confirm-btn">Permanently Delete My Account</button>
+      </div>
+      <button id="delete-account-btn" onclick="showDeleteConfirm()" class="profile-action-btn profile-delete-btn">Delete My Account</button>
+      <div id="profile-delete-msg" class="profile-msg" style="color:var(--danger);"></div>
+
+    </div>
+    <button class="modal-close" onclick="closeProfileModal()">✕ Close</button>
+  </div>
+</div>
+
 <!-- Upgrade Modal -->
 <div class="modal-overlay" id="upgrade-modal">
   <div class="modal" style="max-width:420px;">
